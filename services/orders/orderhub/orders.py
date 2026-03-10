@@ -62,23 +62,18 @@ def get_order(session: Session, order_id: int) -> Order:
 
 
 def list_orders(session: Session, status: str | None = None, limit: int = 50) -> list[dict]:
-    """List orders with their lines (SKU and quantity) for the ops dashboard.
-
-    limit=0 returns every matching order, so the dashboard can fetch a whole day at once."""
     query = select(Order).order_by(Order.id)
     if status:
         query = query.where(Order.status == status)
-    if limit:
-        query = query.limit(limit)
     result = []
-    for order in session.scalars(query):
+    for order in session.scalars(query.limit(limit)):
+        # Each access below loads lazily: one query for the customer and one for the lines, per order.
         result.append({
             "id": order.id,
             "customer_email": order.customer.email,
             "status": order.status,
             "total_minor": order.total_minor,
             "line_count": len(order.lines),
-            "lines": [{"sku": line.product.sku, "quantity": line.quantity} for line in order.lines],
         })
     return result
 

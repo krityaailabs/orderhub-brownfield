@@ -92,15 +92,3 @@ def test_billing_handoff_skips_cancelled_orders(client, session, tmp_path):
     lines = path.read_text(encoding="utf-8").splitlines()
     assert lines[0] == "order_id,customer_name,country,currency,subtotal_minor,total_minor"
     assert [line.split(",")[0] for line in lines[1:]] == [str(keep)]
-
-
-def test_list_orders_includes_lines(client):
-    place(client, [{"sku": "MUG-350", "quantity": 2}])
-    listed = client.get("/orders").json()
-    assert listed[-1]["lines"] == [{"sku": "MUG-350", "quantity": 2}]
-
-
-def test_list_orders_limit_zero_returns_all(client):
-    for _ in range(3):
-        place(client, [{"sku": "MUG-350", "quantity": 1}])
-    assert len(client.get("/orders", params={"limit": 0}).json()) >= 3

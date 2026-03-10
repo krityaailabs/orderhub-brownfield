@@ -9,11 +9,6 @@ class CustomerIn(BaseModel):
     country: str = Field(min_length=2, max_length=2)
 
 
-class CustomerPatch(BaseModel):
-    name: str | None = None
-    email: str | None = None
-
-
 class CustomerOut(BaseModel):
     id: int
     email: str
