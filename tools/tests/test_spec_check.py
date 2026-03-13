@@ -70,8 +70,9 @@ def test_criteria_ids_must_be_sequential():
 def test_criterion_needs_given_when_then_in_order():
     text = GOOD.replace("Given a basket, when I pay, then I get a receipt.", "It should work when I pay.")
     assert "AC-1: needs Given, When and Then in that order" in sc.check_spec(text)
-    text = GOOD.replace("Given a basket, when I pay, then I get a receipt.",
-                        "Then a receipt, given a basket, when paid.")
+    text = GOOD.replace(
+        "Given a basket, when I pay, then I get a receipt.", "Then a receipt, given a basket, when paid."
+    )
     assert "AC-1: needs Given, When and Then in that order" in sc.check_spec(text)
 
 

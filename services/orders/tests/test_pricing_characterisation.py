@@ -20,7 +20,7 @@ def current() -> dict[str, int]:
     return {f"{a}@{p}": pricing.apply_percentage_discount(a, p) for a in AMOUNTS for p in PERCENTS}
 
 
-def test_discount_results_match_the_golden_master():
+def test_discount_results_match_the_golden_master() -> None:
     if os.environ.get("UPDATE_GOLDEN") == "1":
         GOLDEN.write_text(json.dumps(current(), indent=0, sort_keys=True) + "\n", encoding="utf-8")
     expected = json.loads(GOLDEN.read_text(encoding="utf-8"))

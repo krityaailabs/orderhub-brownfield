@@ -46,6 +46,7 @@ def test_rejects_values_outside_0_to_2(bad):
 
 
 def test_cli_prints_recommendation(capsys):
-    assert main(["--spec", "2", "--verify", "2", "--blast", "1", "--context", "2", "--review", "2",
-                 "--novelty", "1"]) == 0
+    assert (
+        main(["--spec", "2", "--verify", "2", "--blast", "1", "--context", "2", "--review", "2", "--novelty", "1"]) == 0
+    )
     assert "total 10/12 -> agent (autonomy L2-L3)" in capsys.readouterr().out

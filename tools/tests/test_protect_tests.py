@@ -32,8 +32,10 @@ ADDITION_ONLY = """--- a/tools/tests/test_x.py
 
 def test_changed_assertion_is_reported():
     assert find_test_edits(TAMPERED) == [
-        ("services/orders/tests/test_returns_acceptance.py",
-         '    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095'),
+        (
+            "services/orders/tests/test_returns_acceptance.py",
+            '    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095',
+        ),
     ]
 
 
@@ -43,12 +45,15 @@ def test_new_test_files_and_pure_additions_are_fine():
 
 
 def test_deleted_test_lines_are_reported_and_blank_lines_ignored():
-    diff = ("--- a/legacy/billing/test/X.java\n+++ b/legacy/billing/test/X.java\n"
-            "@@ -3,2 +2,0 @@\n-        check(a);\n-\n")
+    diff = (
+        "--- a/legacy/billing/test/X.java\n+++ b/legacy/billing/test/X.java\n@@ -3,2 +2,0 @@\n-        check(a);\n-\n"
+    )
     assert find_test_edits(diff) == [("legacy/billing/test/X.java", "        check(a);")]
 
 
 def test_several_files_keep_their_own_names():
     diff = TAMPERED + "--- a/tools/tests/test_y.py\n+++ b/tools/tests/test_y.py\n@@ -1 +0,0 @@\n-assert 2\n"
-    assert [f for f, _ in find_test_edits(diff)] == ["services/orders/tests/test_returns_acceptance.py",
-                                                      "tools/tests/test_y.py"]
+    assert [f for f, _ in find_test_edits(diff)] == [
+        "services/orders/tests/test_returns_acceptance.py",
+        "tools/tests/test_y.py",
+    ]

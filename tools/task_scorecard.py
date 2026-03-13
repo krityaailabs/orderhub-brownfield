@@ -30,8 +30,7 @@ class Recommendation:
 
 
 def score(spec: int, verify: int, blast: int, context: int, review: int, novelty: int) -> Recommendation:
-    values = {"spec": spec, "verify": verify, "blast": blast, "context": context, "review": review,
-              "novelty": novelty}
+    values = {"spec": spec, "verify": verify, "blast": blast, "context": context, "review": review, "novelty": novelty}
     for name, value in values.items():
         if value not in (0, 1, 2):
             raise ValueError(f"{name} must be 0, 1 or 2, got {value!r}")

@@ -49,6 +49,9 @@ def record(session: Session, key: str, fingerprint: str, status_code: int, body:
     stored; for any other status, do nothing, so a client can retry after fixing the problem."""
     if not 200 <= status_code < 300:
         return
-    session.add(IdempotencyRecord(key=key, fingerprint=fingerprint, status_code=status_code,
-                                  response_json=json.dumps(body, sort_keys=True)))
+    session.add(
+        IdempotencyRecord(
+            key=key, fingerprint=fingerprint, status_code=status_code, response_json=json.dumps(body, sort_keys=True)
+        )
+    )
     session.commit()

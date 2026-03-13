@@ -32,8 +32,13 @@ def main() -> int:
     rel = edited_path(payload)
     if not rel:
         return 0
-    result = subprocess.run([sys.executable, str(ROOT / "tools" / "precommit.py"), rel], cwd=ROOT,
-                            capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tools" / "precommit.py"), rel],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     if result.returncode != 0:
         print(f"Checks failed after editing {rel}:\n{result.stdout}{result.stderr}", file=sys.stderr)
         return 2

@@ -22,8 +22,10 @@ SECRET_PATTERNS = [
     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
     ("API key style token", re.compile(r"\bsk-[A-Za-z0-9_\-]{20,}")),
     ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}")),
-    ("assigned password or secret",
-     re.compile(r"(?i)\b(password|passwd|secret|api_key|apikey)\s*[:=]\s*['\"]?[^\s'\"<>]{6,}")),
+    (
+        "assigned password or secret",
+        re.compile(r"(?i)\b(password|passwd|secret|api_key|apikey)\s*[:=]\s*['\"]?[^\s'\"<>]{6,}"),
+    ),
 ]
 COPILOT_SURFACES = ("github-chat", "cloud-agent", "code-review", "vscode", "cli")
 
@@ -86,8 +88,9 @@ def _imports(root: Path, claude_file: Path) -> list[Path]:
     return out
 
 
-def claude_code_loads(root: Path, cwd: str = ".", opened: str | None = None,
-                      mode: str = "claude-md-or-agents-md") -> list[str]:
+def claude_code_loads(
+    root: Path, cwd: str = ".", opened: str | None = None, mode: str = "claude-md-or-agents-md"
+) -> list[str]:
     """Simulate which project instruction files Claude Code loads.
 
     cwd: directory Claude Code was started in (relative to root).

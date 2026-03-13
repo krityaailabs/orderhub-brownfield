@@ -33,12 +33,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     def order_out(order) -> OrderOut:
         return OrderOut(
-            id=order.id, customer_id=order.customer_id, status=order.status, currency=order.currency,
-            subtotal_minor=order.subtotal_minor, discount_code=order.discount_code,
+            id=order.id,
+            customer_id=order.customer_id,
+            status=order.status,
+            currency=order.currency,
+            subtotal_minor=order.subtotal_minor,
+            discount_code=order.discount_code,
             total_minor=order.total_minor,
             total_display=pricing.format_money(order.total_minor, order.currency),
-            lines=[LineOut(product_id=line.product_id, quantity=line.quantity,
-                           unit_price_minor=line.unit_price_minor) for line in order.lines],
+            lines=[
+                LineOut(product_id=line.product_id, quantity=line.quantity, unit_price_minor=line.unit_price_minor)
+                for line in order.lines
+            ],
         )
 
     @app.get("/health")
@@ -52,8 +58,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/orders", status_code=201, response_model=OrderOut)
     def place_order(body: OrderIn, session=Depends(get_session)):
-        order = orders.place_order(session, body.customer_id, [i.model_dump() for i in body.items],
-                                   settings.currency, body.discount_code)
+        order = orders.place_order(
+            session, body.customer_id, [i.model_dump() for i in body.items], settings.currency, body.discount_code
+        )
         return order_out(order)
 
     @app.get("/orders/{order_id}", response_model=OrderOut)
@@ -62,11 +69,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/orders")
     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
-        return orders.list_orders(session, status=status, limit=min(limit, 200))
+        return orders.list_orders(session, status=status, limit=min(limit, 2000))
 
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
-    def cancel_order(order_id: int, session=Depends(get_session),
-                     idempotency_key: str | None = Header(default=None)):
+    def cancel_order(order_id: int, session=Depends(get_session), idempotency_key: str | None = Header(default=None)):
         if idempotency_key is None:
             return order_out(orders.cancel_order(session, order_id))
         fingerprint = idempotency.request_fingerprint("POST", f"/orders/{order_id}/cancel", None)

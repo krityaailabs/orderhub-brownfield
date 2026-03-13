@@ -16,8 +16,17 @@ PY = sys.executable
 
 CHECKS = {
     "lint": [PY, "-m", "ruff", "check", "services/orders", "tools"],
-    "python-tests": [PY, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "services/orders/tests",
-                     "--ignore=services/orders/tests/test_returns_properties.py"],
+    "python-tests": [
+        PY,
+        "-m",
+        "pytest",
+        "-q",
+        "-x",
+        "-p",
+        "no:cacheprovider",
+        "services/orders/tests",
+        "--ignore=services/orders/tests/test_returns_properties.py",
+    ],
     "tool-tests": [PY, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "tools/tests"],
     "java": ["legacy/billing/build.sh"],
     "billing-demo": [PY, "tools/e2e_billing.py"],
@@ -64,8 +73,13 @@ def select_checks(paths: list[str]) -> list[str]:
 
 
 def staged_files() -> list[str]:
-    out = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], cwd=ROOT,
-                         capture_output=True, text=True, check=False).stdout
+    out = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout
     return [line for line in out.splitlines() if line]
 
 

@@ -15,8 +15,9 @@ VALID_STATUSES = {"PLACED", "SHIPPED", "CANCELLED"}
 RETURN_WINDOW = timedelta(days=30)
 
 
-def place_order(session: Session, customer_id: int, items: list[dict], currency: str,
-                discount_code: str | None = None) -> Order:
+def place_order(
+    session: Session, customer_id: int, items: list[dict], currency: str, discount_code: str | None = None
+) -> Order:
     """items: [{"sku": str, "quantity": int}, ...]"""
     if not items:
         raise ValidationFailed("an order needs at least one item")
@@ -47,8 +48,14 @@ def place_order(session: Session, customer_id: int, items: list[dict], currency:
         total = pricing.apply_percentage_discount(sub, dc.percent)
         code = dc.code
 
-    order = Order(customer_id=customer.id, currency=currency, subtotal_minor=sub,
-                  discount_code=code, total_minor=total, lines=lines)
+    order = Order(
+        customer_id=customer.id,
+        currency=currency,
+        subtotal_minor=sub,
+        discount_code=code,
+        total_minor=total,
+        lines=lines,
+    )
     session.add(order)
     session.commit()
     return order
@@ -68,13 +75,15 @@ def list_orders(session: Session, status: str | None = None, limit: int = 50) ->
     result = []
     for order in session.scalars(query.limit(limit)):
         # Each access below loads lazily: one query for the customer and one for the lines, per order.
-        result.append({
-            "id": order.id,
-            "customer_email": order.customer.email,
-            "status": order.status,
-            "total_minor": order.total_minor,
-            "line_count": len(order.lines),
-        })
+        result.append(
+            {
+                "id": order.id,
+                "customer_email": order.customer.email,
+                "status": order.status,
+                "total_minor": order.total_minor,
+                "line_count": len(order.lines),
+            }
+        )
     return result
 
 
@@ -146,15 +155,18 @@ def return_items(session: Session, order_id: int, items: list[dict], now: dateti
     for sku, qty in requested.items():
         line = by_sku[sku]
         if qty > line.quantity - line.returned_quantity:
-            raise ValidationFailed(f"cannot return {qty} x {sku}: only "
-                                   f"{line.quantity - line.returned_quantity} left to return")
+            raise ValidationFailed(
+                f"cannot return {qty} x {sku}: only {line.quantity - line.returned_quantity} left to return"
+            )
 
     remaining_after = sum(line.quantity - line.returned_quantity for line in order.lines) - sum(requested.values())
     if remaining_after == 0:
         refund = order.total_minor - order.refunded_minor
     else:
-        refund = sum(pricing.refund_for_units(by_sku[sku].unit_price_minor, qty, order.subtotal_minor,
-                                              order.total_minor) for sku, qty in requested.items())
+        refund = sum(
+            pricing.refund_for_units(by_sku[sku].unit_price_minor, qty, order.subtotal_minor, order.total_minor)
+            for sku, qty in requested.items()
+        )
 
     for sku, qty in requested.items():
         line = by_sku[sku]
@@ -173,12 +185,20 @@ def write_billing_handoff(session: Session, business_date: date, out_dir: str) -
     path = Path(out_dir) / f"orders_{business_date:%Y%m%d}.csv"
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = session.scalars(select(Order).where(Order.status != "CANCELLED").order_by(Order.id))
-    with path.open("w", newline="", encoding="utf-8") as handle:
+    with path.open("w", newline="") as handle:
         writer = csv.writer(handle)
         writer.writerow(["order_id", "customer_name", "country", "currency", "subtotal_minor", "total_minor"])
         for order in rows:
             if order.created_at.date() != business_date:
                 continue
-            writer.writerow([order.id, order.customer.name, order.customer.country, order.currency,
-                             order.subtotal_minor, order.total_minor])
+            writer.writerow(
+                [
+                    order.id,
+                    order.customer.name,
+                    order.customer.country,
+                    order.currency,
+                    order.subtotal_minor,
+                    order.total_minor,
+                ]
+            )
     return path

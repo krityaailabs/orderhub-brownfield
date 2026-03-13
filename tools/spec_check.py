@@ -110,13 +110,15 @@ def parse_slices(plan_text: str) -> list[dict]:
         dep_list = []
         if deps and deps.group(1).strip().lower() != "none":
             dep_list = re.findall(r"S\d+", deps.group(1))
-        slices.append({
-            "id": m.group(1),
-            "title": m.group(2).strip(),
-            "criteria": re.findall(r"AC-\d+", crit.group(1)) if crit else [],
-            "size": int(size.group(1)) if size else None,
-            "depends": dep_list,
-        })
+        slices.append(
+            {
+                "id": m.group(1),
+                "title": m.group(2).strip(),
+                "criteria": re.findall(r"AC-\d+", crit.group(1)) if crit else [],
+                "size": int(size.group(1)) if size else None,
+                "depends": dep_list,
+            }
+        )
     return slices
 
 
@@ -173,9 +175,12 @@ def main(argv: list[str] | None = None) -> int:
     if argv:
         pairs = [(Path(argv[0]), Path(argv[1]))]
     else:
-        specs = sorted(p for p in (root / "docs" / "specs").glob("*.md")
-                       if not p.name.endswith((".plan.md", ".progress.md"))
-                       and p.name not in ("template.md", "README.md", "progress-template.md"))
+        specs = sorted(
+            p
+            for p in (root / "docs" / "specs").glob("*.md")
+            if not p.name.endswith((".plan.md", ".progress.md"))
+            and p.name not in ("template.md", "README.md", "progress-template.md")
+        )
         pairs = [(p, p.with_name(p.stem + ".plan.md")) for p in specs]
     if not pairs:
         print("No specs found in docs/specs.")

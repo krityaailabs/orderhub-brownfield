@@ -28,8 +28,16 @@ def main() -> int:
         today = datetime.now(timezone.utc).date()
         handoff = orders.write_billing_handoff(session, today, str(out / "handoff"))
     print("handoff:", handoff.relative_to(ROOT))
-    run = subprocess.run([str(ROOT / "legacy" / "billing" / "run_batch.sh"), str(out / "handoff"),
-                          str(out / "billing"), today.isoformat()], capture_output=True, text=True)
+    run = subprocess.run(
+        [
+            str(ROOT / "legacy" / "billing" / "run_batch.sh"),
+            str(out / "handoff"),
+            str(out / "billing"),
+            today.isoformat(),
+        ],
+        capture_output=True,
+        text=True,
+    )
     print(run.stdout.strip())
     if run.returncode != 0:
         print(run.stderr)

@@ -10,8 +10,9 @@ from orderhub.db import Base, make_engine, make_session_factory
 SKUS = ["NB-A5", "PEN-GEL-BLK", "DESK-LAMP", "MUG-350", "BAG-TOTE", "CABLE-USBC", "STAND-LAP"]
 CODES = [None, "SAVE10", "WELCOME15", "STAFF30"]
 
-lines_strategy = st.lists(st.tuples(st.sampled_from(SKUS), st.integers(1, 4)), min_size=1, max_size=4,
-                          unique_by=lambda t: t[0])
+lines_strategy = st.lists(
+    st.tuples(st.sampled_from(SKUS), st.integers(1, 4)), min_size=1, max_size=4, unique_by=lambda t: t[0]
+)
 
 
 def fresh_session():
@@ -30,7 +31,7 @@ def place_and_ship(session, lines, code):
 
 @settings(max_examples=60, deadline=None)
 @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
-def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data):
+def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data) -> None:
     session = fresh_session()
     order = place_and_ship(session, lines, code)
     units = [sku for sku, qty in lines for _ in range(qty)]
@@ -41,7 +42,7 @@ def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data):
 
 @settings(max_examples=60, deadline=None)
 @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
-def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code, data):
+def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code, data) -> None:
     session = fresh_session()
     order = place_and_ship(session, lines, code)
     units = [sku for sku, qty in lines for _ in range(qty)]
@@ -55,6 +56,6 @@ def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code
 
 
 @given(price=st.integers(1, 100_000), qty=st.integers(1, 20))
-def test_without_a_discount_the_refund_is_the_full_value(price, qty):
+def test_without_a_discount_the_refund_is_the_full_value(price, qty) -> None:
     subtotal = price * qty * 2
     assert pricing.refund_for_units(price, qty, subtotal, subtotal) == price * qty

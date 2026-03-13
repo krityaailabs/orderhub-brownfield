@@ -20,20 +20,35 @@ def make_repo(tmp_path: Path, files: dict[str, str]) -> Path:
 
 # find_instruction_files
 
+
 def test_finds_every_kind_of_instruction_file(tmp_path):
-    root = make_repo(tmp_path, {
-        "AGENTS.md": "x", "legacy/billing/AGENTS.md": "x", "CLAUDE.md": "x", "sub/CLAUDE.local.md": "x",
-        ".github/copilot-instructions.md": "x", ".github/instructions/py.instructions.md": "x",
-        ".cursor/rules/style.mdc": "x", "README.md": "not an instruction file",
-        ".venv/lib/AGENTS.md": "ignored: inside .venv",
-    })
+    root = make_repo(
+        tmp_path,
+        {
+            "AGENTS.md": "x",
+            "legacy/billing/AGENTS.md": "x",
+            "CLAUDE.md": "x",
+            "sub/CLAUDE.local.md": "x",
+            ".github/copilot-instructions.md": "x",
+            ".github/instructions/py.instructions.md": "x",
+            ".cursor/rules/style.mdc": "x",
+            "README.md": "not an instruction file",
+            ".venv/lib/AGENTS.md": "ignored: inside .venv",
+        },
+    )
     assert cc.find_instruction_files(root) == [
-        ".cursor/rules/style.mdc", ".github/copilot-instructions.md", ".github/instructions/py.instructions.md",
-        "AGENTS.md", "CLAUDE.md", "legacy/billing/AGENTS.md", "sub/CLAUDE.local.md",
+        ".cursor/rules/style.mdc",
+        ".github/copilot-instructions.md",
+        ".github/instructions/py.instructions.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "legacy/billing/AGENTS.md",
+        "sub/CLAUDE.local.md",
     ]
 
 
 # claude_code_loads
+
 
 def test_claude_reads_agents_md_when_there_is_no_claude_md(tmp_path):
     root = make_repo(tmp_path, {"AGENTS.md": "root"})
@@ -61,24 +76,34 @@ def test_import_inside_backticks_is_not_an_import(tmp_path):
 
 
 def test_nested_agents_md_loads_when_a_file_there_is_opened(tmp_path):
-    root = make_repo(tmp_path, {"AGENTS.md": "root", "legacy/billing/AGENTS.md": "billing",
-                                "legacy/billing/src/X.java": "class X {}"})
+    root = make_repo(
+        tmp_path,
+        {"AGENTS.md": "root", "legacy/billing/AGENTS.md": "billing", "legacy/billing/src/X.java": "class X {}"},
+    )
     assert cc.claude_code_loads(root) == ["AGENTS.md"]
-    assert cc.claude_code_loads(root, opened="legacy/billing/src/X.java") == ["AGENTS.md",
-                                                                              "legacy/billing/AGENTS.md"]
+    assert cc.claude_code_loads(root, opened="legacy/billing/src/X.java") == ["AGENTS.md", "legacy/billing/AGENTS.md"]
 
 
 def test_root_claude_md_also_stops_nested_agents_md(tmp_path):
-    root = make_repo(tmp_path, {"AGENTS.md": "root", "CLAUDE.md": "@AGENTS.md\n",
-                                "legacy/billing/AGENTS.md": "billing", "legacy/billing/X.java": ""})
+    root = make_repo(
+        tmp_path,
+        {
+            "AGENTS.md": "root",
+            "CLAUDE.md": "@AGENTS.md\n",
+            "legacy/billing/AGENTS.md": "billing",
+            "legacy/billing/X.java": "",
+        },
+    )
     assert cc.claude_code_loads(root, opened="legacy/billing/X.java") == ["CLAUDE.md", "AGENTS.md"]
 
 
 def test_both_mode_reads_claude_md_then_agents_md(tmp_path):
-    root = make_repo(tmp_path, {"AGENTS.md": "a", "CLAUDE.local.md": "b", "legacy/AGENTS.md": "c",
-                                "legacy/X.java": ""})
+    root = make_repo(tmp_path, {"AGENTS.md": "a", "CLAUDE.local.md": "b", "legacy/AGENTS.md": "c", "legacy/X.java": ""})
     assert cc.claude_code_loads(root, opened="legacy/X.java", mode="claude-md-and-agents-md") == [
-        "CLAUDE.local.md", "AGENTS.md", "legacy/AGENTS.md"]
+        "CLAUDE.local.md",
+        "AGENTS.md",
+        "legacy/AGENTS.md",
+    ]
 
 
 def test_claude_md_only_mode_never_reads_agents_md(tmp_path):
@@ -93,20 +118,30 @@ def test_unknown_mode_is_rejected(tmp_path):
 
 # copilot_loads
 
+
 def test_github_chat_reads_only_copilot_instructions(tmp_path):
     root = make_repo(tmp_path, {"AGENTS.md": "a", ".github/copilot-instructions.md": "c", "CLAUDE.md": "x"})
     assert cc.copilot_loads(root, "github-chat") == [".github/copilot-instructions.md"]
 
 
 def test_cloud_agent_reads_instructions_agents_and_claude_md(tmp_path):
-    root = make_repo(tmp_path, {
-        "AGENTS.md": "a", ".github/copilot-instructions.md": "c", "CLAUDE.md": "x",
-        ".github/instructions/java.instructions.md": "---\napplyTo: 'legacy/**/*.java'\n---\nJava rules",
-        "legacy/AGENTS.md": "legacy",
-    })
+    root = make_repo(
+        tmp_path,
+        {
+            "AGENTS.md": "a",
+            ".github/copilot-instructions.md": "c",
+            "CLAUDE.md": "x",
+            ".github/instructions/java.instructions.md": "---\napplyTo: 'legacy/**/*.java'\n---\nJava rules",
+            "legacy/AGENTS.md": "legacy",
+        },
+    )
     assert cc.copilot_loads(root, "cloud-agent", "legacy/src/X.java") == [
-        ".github/copilot-instructions.md", ".github/instructions/java.instructions.md", "AGENTS.md",
-        "legacy/AGENTS.md", "CLAUDE.md"]
+        ".github/copilot-instructions.md",
+        ".github/instructions/java.instructions.md",
+        "AGENTS.md",
+        "legacy/AGENTS.md",
+        "CLAUDE.md",
+    ]
 
 
 def test_vscode_does_not_read_claude_md(tmp_path):
@@ -121,18 +156,29 @@ def test_unknown_copilot_surface_is_rejected(tmp_path):
 
 # cursor_loads
 
+
 def test_cursor_applies_always_rules_glob_rules_and_nested_agents(tmp_path):
-    root = make_repo(tmp_path, {
-        ".cursor/rules/always.mdc": "---\nalwaysApply: true\n---\nalways",
-        ".cursor/rules/java.mdc": "---\nglobs: legacy/**/*.java\nalwaysApply: false\n---\njava",
-        ".cursor/rules/web.mdc": "---\nglobs: web/**\n---\nweb",
-        "AGENTS.md": "a", "legacy/AGENTS.md": "l", "CLAUDE.md": "not read by Cursor",
-    })
-    assert cc.cursor_loads(root, "legacy/src/X.java") == [".cursor/rules/always.mdc", ".cursor/rules/java.mdc",
-                                                          "AGENTS.md", "legacy/AGENTS.md"]
+    root = make_repo(
+        tmp_path,
+        {
+            ".cursor/rules/always.mdc": "---\nalwaysApply: true\n---\nalways",
+            ".cursor/rules/java.mdc": "---\nglobs: legacy/**/*.java\nalwaysApply: false\n---\njava",
+            ".cursor/rules/web.mdc": "---\nglobs: web/**\n---\nweb",
+            "AGENTS.md": "a",
+            "legacy/AGENTS.md": "l",
+            "CLAUDE.md": "not read by Cursor",
+        },
+    )
+    assert cc.cursor_loads(root, "legacy/src/X.java") == [
+        ".cursor/rules/always.mdc",
+        ".cursor/rules/java.mdc",
+        "AGENTS.md",
+        "legacy/AGENTS.md",
+    ]
 
 
 # content checks
+
 
 def test_required_sections():
     assert cc.check_required_sections("# T\n## Commands\n## Boundaries and limits\n") == ["Conventions"]
@@ -145,12 +191,15 @@ def test_check_commands_reports_only_missing_backticked_targets():
     assert cc.check_commands(text, makefile) == ["deploy"]
 
 
-@pytest.mark.parametrize("line", [
-    "AWS key AKIAABCDEFGHIJKLMNOP",
-    "-----BEGIN RSA PRIVATE KEY-----",
-    "token sk-abcdefghijklmnopqrstuvwxyz123456",
-    "password = hunter22hunter",
-])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "AWS key AKIAABCDEFGHIJKLMNOP",
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "token sk-abcdefghijklmnopqrstuvwxyz123456",
+        "password = hunter22hunter",
+    ],
+)
 def test_secret_patterns_are_found(line):
     findings = cc.check_no_secrets("fine line\n" + line)
     assert len(findings) == 1 and findings[0].startswith("line 2: ")

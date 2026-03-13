@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
 from orderhub import orders
 from orderhub.models import Product
 
@@ -11,7 +14,7 @@ def place(client, items, code=None, customer_id=1):
     return client.post("/orders", json=body)
 
 
-def test_place_order_computes_totals(client):
+def test_place_order_computes_totals(client: TestClient) -> None:
     r = place(client, [{"sku": "PEN-GEL-BLK", "quantity": 4}, {"sku": "MUG-350", "quantity": 1}])
     assert r.status_code == 201
     body = r.json()
@@ -20,54 +23,54 @@ def test_place_order_computes_totals(client):
     assert body["total_display"] == "22.46 USD"
 
 
-def test_place_order_with_discount_on_round_amount(client):
+def test_place_order_with_discount_on_round_amount(client: TestClient) -> None:
     r = place(client, [{"sku": "STAND-LAP", "quantity": 2}], code="SAVE10")
     assert r.status_code == 201
     assert r.json()["total_minor"] == 8190
 
 
-def test_sku_is_case_insensitive(client):
+def test_sku_is_case_insensitive(client: TestClient) -> None:
     assert place(client, [{"sku": "mug-350", "quantity": 1}]).status_code == 201
 
 
-def test_unknown_sku_is_rejected(client):
+def test_unknown_sku_is_rejected(client: TestClient) -> None:
     assert place(client, [{"sku": "NOPE", "quantity": 1}]).status_code == 422
 
 
-def test_inactive_product_is_rejected(client):
+def test_inactive_product_is_rejected(client: TestClient) -> None:
     assert place(client, [{"sku": "HDPHN-WIRED", "quantity": 1}]).status_code == 422
 
 
-def test_out_of_stock_is_rejected(client):
+def test_out_of_stock_is_rejected(client: TestClient) -> None:
     assert place(client, [{"sku": "PLANNER-26", "quantity": 1}]).status_code == 409
 
 
-def test_inactive_discount_code_is_rejected(client):
+def test_inactive_discount_code_is_rejected(client: TestClient) -> None:
     assert place(client, [{"sku": "MUG-350", "quantity": 1}], code="SUMMER25").status_code == 422
 
 
-def test_unknown_customer_is_rejected(client):
+def test_unknown_customer_is_rejected(client: TestClient) -> None:
     assert place(client, [{"sku": "MUG-350", "quantity": 1}], customer_id=999).status_code == 404
 
 
-def test_placing_an_order_reduces_stock(client, session):
+def test_placing_an_order_reduces_stock(client: TestClient, session: Session) -> None:
     place(client, [{"sku": "DESK-LAMP", "quantity": 3}])
     session.expire_all()
     assert session.get(Product, 3).stock == 117
 
 
-def test_get_order(client):
+def test_get_order(client: TestClient) -> None:
     order_id = place(client, [{"sku": "MUG-350", "quantity": 2}]).json()["id"]
     r = client.get(f"/orders/{order_id}")
     assert r.status_code == 200
     assert r.json()["lines"][0]["quantity"] == 2
 
 
-def test_get_missing_order(client):
+def test_get_missing_order(client: TestClient) -> None:
     assert client.get("/orders/12345").status_code == 404
 
 
-def test_list_orders_filters_by_status(client):
+def test_list_orders_filters_by_status(client: TestClient) -> None:
     a = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
     place(client, [{"sku": "MUG-350", "quantity": 1}])
     client.post(f"/orders/{a}/cancel")
@@ -75,7 +78,7 @@ def test_list_orders_filters_by_status(client):
     assert [o["id"] for o in cancelled] == [a]
 
 
-def test_cancel_restores_stock(client, session):
+def test_cancel_restores_stock(client: TestClient, session: Session) -> None:
     order_id = place(client, [{"sku": "BAG-TOTE", "quantity": 5}]).json()["id"]
     r = client.post(f"/orders/{order_id}/cancel")
     assert r.json()["status"] == "CANCELLED"
@@ -83,7 +86,7 @@ def test_cancel_restores_stock(client, session):
     assert session.get(Product, 5).stock == 220
 
 
-def test_billing_handoff_skips_cancelled_orders(client, session, tmp_path):
+def test_billing_handoff_skips_cancelled_orders(client: TestClient, session: Session, tmp_path) -> None:
     keep = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
     drop = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
     client.post(f"/orders/{drop}/cancel")

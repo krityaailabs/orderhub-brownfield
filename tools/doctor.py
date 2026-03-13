@@ -32,11 +32,23 @@ def main() -> int:
         found = importlib.util.find_spec(pkg) is not None
         rows.append((f"package {pkg}", found, "installed" if found else "missing: run make setup", True))
     jm = java_major()
-    rows.append(("java >= 11 (javac)", jm is not None and jm >= 11 and shutil.which("javac") is not None,
-                 f"java {jm}" if jm else "not found", True))
+    rows.append(
+        (
+            "java >= 11 (javac)",
+            jm is not None and jm >= 11 and shutil.which("javac") is not None,
+            f"java {jm}" if jm else "not found",
+            True,
+        )
+    )
     rows.append(("git", shutil.which("git") is not None, shutil.which("git") or "not found", True))
-    rows.append(("ruff (lint)", shutil.which("ruff") is not None or importlib.util.find_spec("ruff") is not None,
-                 "found" if importlib.util.find_spec("ruff") else "optional", False))
+    rows.append(
+        (
+            "ruff (lint)",
+            shutil.which("ruff") is not None or importlib.util.find_spec("ruff") is not None,
+            "found" if importlib.util.find_spec("ruff") else "optional",
+            False,
+        )
+    )
     failed = 0
     for name, passed, detail, required in rows:
         mark = "OK  " if passed else ("FAIL" if required else "WARN")

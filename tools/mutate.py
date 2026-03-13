@@ -24,37 +24,58 @@ SERVICE = ROOT / "services" / "orders"
 @dataclass(frozen=True)
 class Mutant:
     name: str
-    path: str      # relative to services/orders
+    path: str  # relative to services/orders
     old: str
     new: str
 
 
 MUTANTS = [
-    Mutant("rounding: half-up becomes floor", "orderhub/pricing.py",
-           "share = (2 * discount * value + subtotal_minor) // (2 * subtotal_minor)",
-           "share = (2 * discount * value) // (2 * subtotal_minor)"),
+    Mutant(
+        "rounding: half-up becomes floor",
+        "orderhub/pricing.py",
+        "share = (2 * discount * value + subtotal_minor) // (2 * subtotal_minor)",
+        "share = (2 * discount * value) // (2 * subtotal_minor)",
+    ),
     Mutant("discount share ignored", "orderhub/pricing.py", "return value - share", "return value"),
-    Mutant("value ignores quantity", "orderhub/pricing.py",
-           "    value = unit_price_minor * quantity\n    discount =", "    value = unit_price_minor\n    discount ="),
-    Mutant("partial refund uses the whole order's discount", "orderhub/pricing.py",
-           "    discount = subtotal_minor - total_minor\n    share",
-           "    discount = subtotal_minor - total_minor\n    value = max(value, subtotal_minor)\n    share"),
+    Mutant(
+        "value ignores quantity",
+        "orderhub/pricing.py",
+        "    value = unit_price_minor * quantity\n    discount =",
+        "    value = unit_price_minor\n    discount =",
+    ),
+    Mutant(
+        "partial refund uses the whole order's discount",
+        "orderhub/pricing.py",
+        "    discount = subtotal_minor - total_minor\n    share",
+        "    discount = subtotal_minor - total_minor\n    value = max(value, subtotal_minor)\n    share",
+    ),
     Mutant("remainder rule removed", "orderhub/orders.py", "if remaining_after == 0:", "if remaining_after < 0:"),
-    Mutant("window boundary: >= becomes >", "orderhub/orders.py",
-           "if now >= _as_utc(order.created_at) + RETURN_WINDOW:",
-           "if now > _as_utc(order.created_at) + RETURN_WINDOW:"),
+    Mutant(
+        "window boundary: >= becomes >",
+        "orderhub/orders.py",
+        "if now >= _as_utc(order.created_at) + RETURN_WINDOW:",
+        "if now > _as_utc(order.created_at) + RETURN_WINDOW:",
+    ),
     Mutant("restock removed", "orderhub/orders.py", "line.product.stock += qty", "line.product.stock += 0"),
-    Mutant("status check accepts PLACED", "orderhub/orders.py",
-           'if order.status != "SHIPPED":\n        raise Conflict(f"only SHIPPED',
-           'if order.status == "CANCELLED":\n        raise Conflict(f"only SHIPPED'),
+    Mutant(
+        "status check accepts PLACED",
+        "orderhub/orders.py",
+        'if order.status != "SHIPPED":\n        raise Conflict(f"only SHIPPED',
+        'if order.status == "CANCELLED":\n        raise Conflict(f"only SHIPPED',
+    ),
 ]
 
 DEFAULT_TESTS = sorted(str(p.relative_to(SERVICE)) for p in (SERVICE / "tests").glob("test_returns_*.py"))
 
 
 def run_tests(tests: list[str]) -> bool:
-    result = subprocess.run([sys.executable, "-m", "pytest", "-x", "-q", "-p", "no:cacheprovider", *tests],
-                            cwd=SERVICE, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-x", "-q", "-p", "no:cacheprovider", *tests],
+        cwd=SERVICE,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     return result.returncode == 0
 
 
@@ -83,8 +104,11 @@ def main(argv: list[str] | None = None) -> int:
             survived.append(m.name)
     total = len(MUTANTS) - len(skipped)
     killed_count = total - len(survived)
-    print(f"\n{killed_count} of {total} mutants killed ({100 * killed_count // max(total, 1)}%)"
-          + (f"; {len(skipped)} skipped" if skipped else "") + ".")
+    print(
+        f"\n{killed_count} of {total} mutants killed ({100 * killed_count // max(total, 1)}%)"
+        + (f"; {len(skipped)} skipped" if skipped else "")
+        + "."
+    )
     return 1 if survived or skipped else 0
 
 

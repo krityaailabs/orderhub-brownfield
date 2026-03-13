@@ -19,10 +19,12 @@ def test_test_file_change_runs_the_guard():
 
 
 def test_legacy_java_change():
-    assert select_checks(["legacy/billing/src/com/orderhub/billing/InvoiceCalculator.java"]) == [
-        "java", "billing-demo"]
+    assert select_checks(["legacy/billing/src/com/orderhub/billing/InvoiceCalculator.java"]) == ["java", "billing-demo"]
     assert select_checks(["legacy/billing/test/com/orderhub/billing/BillingSelfTest.java"]) == [
-        "java", "billing-demo", "protect-tests"]
+        "java",
+        "billing-demo",
+        "protect-tests",
+    ]
 
 
 def test_context_and_spec_files():
@@ -34,7 +36,10 @@ def test_context_and_spec_files():
 
 def test_tools_change_runs_tool_tests_and_lint():
     assert select_checks(["tools/mutate.py", "tools/tests/test_precommit.py"]) == [
-        "lint", "tool-tests", "protect-tests"]
+        "lint",
+        "tool-tests",
+        "protect-tests",
+    ]
 
 
 def test_unrelated_files_need_nothing_and_order_is_stable():
