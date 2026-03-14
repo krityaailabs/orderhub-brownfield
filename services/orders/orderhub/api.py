@@ -62,7 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/orders")
     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
-        return orders.list_orders(session, status=status, limit=min(limit, 200))
+        return orders.list_orders(session, status=status, limit=limit)
 
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
     def cancel_order(order_id: int, session=Depends(get_session),
