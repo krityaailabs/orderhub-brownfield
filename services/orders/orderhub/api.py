@@ -64,6 +64,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
         return orders.list_orders(session, status=status, limit=min(limit, 200))
 
+    @app.get("/reports/daily-sales")
+    def daily_sales(date: str, session=Depends(get_session)):
+        return orders.daily_sales(session, date)
+
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
     def cancel_order(order_id: int, session=Depends(get_session),
                      idempotency_key: str | None = Header(default=None)):

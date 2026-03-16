@@ -4,7 +4,7 @@ import csv
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from . import pricing
@@ -182,3 +182,11 @@ def write_billing_handoff(session: Session, business_date: date, out_dir: str) -
             writer.writerow([order.id, order.customer.name, order.customer.country, order.currency,
                              order.subtotal_minor, order.total_minor])
     return path
+
+
+def daily_sales(session: Session, day: str) -> dict:
+    """Number of orders and total sales (minor units) for one calendar day, for the finance dashboard."""
+    row = session.execute(text(
+        f"SELECT COUNT(*), COALESCE(SUM(total_minor), 0) FROM orders WHERE date(created_at) = '{day}'"
+    )).one()
+    return {"date": day, "orders": row[0], "total_minor": row[1]}
