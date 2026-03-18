@@ -27,3 +27,14 @@ def get_customer(session: Session, customer_id: int) -> Customer:
     if customer is None:
         raise NotFound(f"customer {customer_id} not found")
     return customer
+
+
+def update_customer(session: Session, customer_id: int, name: str | None = None,
+                    email: str | None = None) -> Customer:
+    customer = get_customer(session, customer_id)
+    if name is not None:
+        customer.name = name.strip()
+    if email is not None:
+        customer.email = email.strip()
+    session.commit()
+    return customer

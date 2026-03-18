@@ -7,7 +7,7 @@ from . import customers, idempotency, orders, pricing
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .errors import OrderHubError
-from .schemas import CustomerIn, CustomerOut, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
+from .schemas import CustomerIn, CustomerOut, CustomerPatch, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -48,6 +48,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/customers", status_code=201, response_model=CustomerOut)
     def create_customer(body: CustomerIn, session=Depends(get_session)):
         c = customers.create_customer(session, body.email, body.name, body.country)
+        return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
+
+    @app.patch("/customers/{customer_id}", response_model=CustomerOut)
+    def update_customer(customer_id: int, body: CustomerPatch, session=Depends(get_session)):
+        c = customers.update_customer(session, customer_id, name=body.name, email=body.email)
         return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
 
     @app.post("/orders", status_code=201, response_model=OrderOut)
