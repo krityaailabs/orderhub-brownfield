@@ -28,7 +28,15 @@ def check_scope(paths: list[str], allowed: list[str], denied: list[str]) -> list
       - otherwise, a path matching no `allowed` glob is a problem: "outside allowed paths: <path>"
       - an empty `paths` list is a problem too: ["no changes"] (a run that changes nothing opens no PR)
     Use matches() for glob matching."""
-    raise NotImplementedError("Lab s09: implement check_scope")
+    if not paths:
+        return ["no changes"]
+    problems = []
+    for path in paths:
+        if matches(path, denied):
+            problems.append(f"denied path: {path}")
+        elif not matches(path, allowed):
+            problems.append(f"outside allowed paths: {path}")
+    return problems
 
 
 def check_budget(stats: DiffStats, budget: dict) -> list[str]:
@@ -42,4 +50,16 @@ def check_budget(stats: DiffStats, budget: dict) -> list[str]:
       "too expensive: $<usd:.2f> > $<max:.2f>"
     If max_usd is set and the agent reported no cost (usd is None), that is a problem too:
       "cost not reported (max_usd is set)"   (an unmeasured budget is not a budget)."""
-    raise NotImplementedError("Lab s09: implement check_budget")
+    problems = []
+    if "max_files" in budget and len(stats.files) > budget["max_files"]:
+        problems.append(f"too many files: {len(stats.files)} > {budget['max_files']}")
+    if "max_changed_lines" in budget and stats.changed_lines > budget["max_changed_lines"]:
+        problems.append(f"too many changed lines: {stats.changed_lines} > {budget['max_changed_lines']}")
+    if "max_minutes" in budget and stats.minutes > budget["max_minutes"]:
+        problems.append(f"too long: {stats.minutes:.1f} min > {budget['max_minutes']} min")
+    if "max_usd" in budget:
+        if stats.usd is None:
+            problems.append("cost not reported (max_usd is set)")
+        elif stats.usd > budget["max_usd"]:
+            problems.append(f"too expensive: ${stats.usd:.2f} > ${budget['max_usd']:.2f}")
+    return problems

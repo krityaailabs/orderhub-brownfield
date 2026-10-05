@@ -1,6 +1,6 @@
 {
-  "min_severity": "info",
-  "drop_categories": [],
-  "dedupe": false,
+  "min_severity": "medium",
+  "drop_categories": ["style"],
+  "dedupe": true,
   "ignore_paths": []
 }

@@ -42,7 +42,22 @@ def choose_bump(lock_text: str, available: dict[str, list[str]], hold: list[str]
       - choose the highest candidate for that package
       - return the first package, in file order, that has a candidate; the name as written in the lock
     """
-    raise NotImplementedError("Lab s09: implement choose_bump")
+    held = {_norm(h) for h in hold}
+    for line in lock_text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if "==" not in line:
+            continue
+        name, current = line.split("==", 1)
+        if _norm(name) in held:
+            continue
+        now = parse_version(current)
+        if now is None:
+            continue
+        candidates = [v for v in available.get(_norm(name), [])
+                      if (p := parse_version(v)) and p[:2] == now[:2] and p > now]
+        if candidates:
+            return name, current, max(candidates, key=parse_version)
+    return None
 
 
 def apply_bump(lock_text: str, name: str, new: str) -> str:
