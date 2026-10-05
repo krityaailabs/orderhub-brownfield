@@ -7,3 +7,6 @@ out/
 handoff/
 legacy/billing/build/
 .env
+
+# Personal Claude Code notes: do not use in this repository (it stops Claude Code reading AGENTS.md).
+CLAUDE.local.md
