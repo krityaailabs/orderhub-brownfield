@@ -41,7 +41,26 @@ def select_checks(paths: list[str]) -> list[str]:
       - under docs/specs/                            -> specs
       - under any tests/ or test/ directory          -> protect-tests
     Paths that match nothing need no checks."""
-    raise NotImplementedError("Lab s05: implement select_checks")
+    wanted: set[str] = set()
+    for path in paths:
+        name = path.rsplit("/", 1)[-1]
+        if path.endswith(".py"):
+            wanted.add("lint")
+        if path.startswith("services/orders/"):
+            wanted.add("python-tests")
+        if path.startswith("tools/"):
+            wanted.add("tool-tests")
+        if path.startswith("legacy/billing/"):
+            wanted.update({"java", "billing-demo"})
+        if path == "services/orders/orderhub/orders.py":
+            wanted.add("billing-demo")
+        if name in ("AGENTS.md", "CLAUDE.md") or path == ".github/copilot-instructions.md":
+            wanted.add("context")
+        if path.startswith("docs/specs/"):
+            wanted.add("specs")
+        if "/tests/" in f"/{path}" or "/test/" in f"/{path}":
+            wanted.add("protect-tests")
+    return [name for name in ORDER if name in wanted]
 
 
 def staged_files() -> list[str]:

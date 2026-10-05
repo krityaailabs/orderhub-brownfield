@@ -79,7 +79,11 @@ def list_orders(session: Session, status: str | None = None, limit: int = 50) ->
 
 
 def cancel_order(session: Session, order_id: int) -> Order:
+    """Cancel a PLACED order and restore its stock. Cancelling an already CANCELLED order is a no-op
+    that returns the order unchanged (idempotent; issue Q12). SHIPPED orders cannot be cancelled."""
     order = get_order(session, order_id)
+    if order.status == "CANCELLED":
+        return order
     if order.status == "SHIPPED":
         raise Conflict("shipped orders cannot be cancelled")
     for line in order.lines:

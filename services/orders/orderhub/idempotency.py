@@ -6,13 +6,13 @@ request returns the stored response without running again. Reusing a key for a d
 request is an error.
 """
 
-import hashlib  # noqa: F401  (used once the Lab s05 stubs are implemented)
-import json  # noqa: F401  (used once the Lab s05 stubs are implemented)
+import hashlib
+import json
 
 from sqlalchemy.orm import Session
 
-from .errors import ValidationFailed  # noqa: F401
-from .models import IdempotencyRecord  # noqa: F401
+from .errors import ValidationFailed
+from .models import IdempotencyRecord
 
 MAX_KEY_LENGTH = 128
 
@@ -21,7 +21,8 @@ def request_fingerprint(method: str, path: str, body: dict | None) -> str:
     """Return a SHA-256 hex digest that identifies the request: method (upper-cased), path, and
     the body serialised as JSON with sorted keys and no spaces (None counts as an empty object).
     Two requests that differ only in key order or whitespace have the same fingerprint."""
-    raise NotImplementedError("Lab s05: implement request_fingerprint")
+    canonical = json.dumps(body or {}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(f"{method.upper()} {path}\n{canonical}".encode("utf-8")).hexdigest()
 
 
 def lookup(session: Session, key: str, fingerprint: str) -> tuple[int, dict] | None:
@@ -31,10 +32,23 @@ def lookup(session: Session, key: str, fingerprint: str) -> tuple[int, dict] | N
     ValidationFailed("idempotency key is empty") if it is blank, and
     ValidationFailed("idempotency key reused for a different request") if the stored fingerprint
     differs from fingerprint."""
-    raise NotImplementedError("Lab s05: implement lookup")
+    if not key.strip():
+        raise ValidationFailed("idempotency key is empty")
+    if len(key) > MAX_KEY_LENGTH:
+        raise ValidationFailed("idempotency key is too long")
+    record = session.get(IdempotencyRecord, key)
+    if record is None:
+        return None
+    if record.fingerprint != fingerprint:
+        raise ValidationFailed("idempotency key reused for a different request")
+    return record.status_code, json.loads(record.response_json)
 
 
 def record(session: Session, key: str, fingerprint: str, status_code: int, body: dict) -> None:
     """Store the outcome for key and commit. Only successful outcomes (status 200 to 299) are
     stored; for any other status, do nothing, so a client can retry after fixing the problem."""
-    raise NotImplementedError("Lab s05: implement record")
+    if not 200 <= status_code < 300:
+        return
+    session.add(IdempotencyRecord(key=key, fingerprint=fingerprint, status_code=status_code,
+                                  response_json=json.dumps(body, sort_keys=True)))
+    session.commit()
