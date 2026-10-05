@@ -1,0 +1,25 @@
+BILLING EXPORT RECORD LAYOUT                                  rev 3, 2017
+-----------------------------------------------------------------------
+File: BILLyyyymmdd.DAT, fixed width, 80 bytes per record.
+
+Header (H)
+  pos 1      'H'
+  pos 2-7    business date DDMMYY
+  pos 8-15   'ORDERHUB'
+
+Detail (D)
+  pos 1      'D'
+  pos 2-11   order id, zero filled
+  pos 12-41  customer name, left aligned, space filled
+  pos 42-43  country
+  pos 44-46  currency
+  pos 47-56  net amount, implied 2 decimals, zero filled
+  pos 57-66  tax amount
+  pos 67-76  gross amount
+
+Trailer (T)
+  pos 1      'T'
+  pos 2-7    record count
+  pos 8-20   gross total
+
+Contact: billing team (see wiki)

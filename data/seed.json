@@ -1,0 +1,32 @@
+{
+  "customers": [
+    {"id": 1, "email": "aiko.tanaka@example.com", "name": "Aiko Tanaka", "country": "JP"},
+    {"id": 2, "email": "lucas.martin@example.com", "name": "Lucas Martin", "country": "FR"},
+    {"id": 3, "email": "priya.nair@example.com", "name": "Priya Nair", "country": "IN"},
+    {"id": 4, "email": "omar.haddad@example.com", "name": "Omar Haddad", "country": "AE"},
+    {"id": 5, "email": "emma.clarke@example.com", "name": "Emma Clarke", "country": "GB"},
+    {"id": 6, "email": "daniel.okafor@example.com", "name": "Daniel Okafor", "country": "NG"},
+    {"id": 7, "email": "sofia.rossi@example.com", "name": "Sofia Rossi", "country": "IT"},
+    {"id": 8, "email": "liam.walsh@example.com", "name": "Liam Walsh", "country": "AU"}
+  ],
+  "products": [
+    {"id": 1, "sku": "NB-A5", "name": "Notebook A5, dotted", "unit_price_minor": 1001, "stock": 500},
+    {"id": 2, "sku": "PEN-GEL-BLK", "name": "Gel pen, black", "unit_price_minor": 249, "stock": 2000},
+    {"id": 3, "sku": "DESK-LAMP", "name": "Desk lamp, LED", "unit_price_minor": 3999, "stock": 120},
+    {"id": 4, "sku": "MUG-350", "name": "Mug, 350 ml", "unit_price_minor": 1250, "stock": 300},
+    {"id": 5, "sku": "BAG-TOTE", "name": "Tote bag, canvas", "unit_price_minor": 1575, "stock": 220},
+    {"id": 6, "sku": "CABLE-USBC", "name": "USB-C cable, 1 m", "unit_price_minor": 899, "stock": 800},
+    {"id": 7, "sku": "STAND-LAP", "name": "Laptop stand, aluminium", "unit_price_minor": 4550, "stock": 60},
+    {"id": 8, "sku": "PLANNER-26", "name": "Planner 2026", "unit_price_minor": 1899, "stock": 0},
+    {"id": 9, "sku": "BOTTLE-750", "name": "Water bottle, 750 ml", "unit_price_minor": 2199, "stock": 150},
+    {"id": 10, "sku": "STICKY-NOTES", "name": "Sticky notes, 6 pack", "unit_price_minor": 599, "stock": 900},
+    {"id": 11, "sku": "HDPHN-WIRED", "name": "Headphones, wired", "unit_price_minor": 2999, "stock": 40, "active": false},
+    {"id": 12, "sku": "CHAIR-CUSHION", "name": "Chair cushion", "unit_price_minor": 2475, "stock": 75}
+  ],
+  "discount_codes": [
+    {"code": "SAVE10", "percent": 10},
+    {"code": "WELCOME15", "percent": 15},
+    {"code": "STAFF30", "percent": 30},
+    {"code": "SUMMER25", "percent": 25, "active": false}
+  ]
+}
