@@ -1,0 +1,7 @@
+# Diff 4 — Agent's note (late in a long session, after earlier agreeing "money stays in integer minor units"):
+# "Added partial refunds."
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
++def refund_amount(order: Order, fraction: float) -> float:
++    """Amount to refund when part of an order is returned."""
++    return round(order.total_minor / 100 * fraction, 2)

@@ -1,0 +1,13 @@
+# Diff 1 — Agent's note: "Made the email check case-insensitive using SQLAlchemy's exact-match ilike."
+--- a/services/orders/orderhub/customers.py
++++ b/services/orders/orderhub/customers.py
+@@ def create_customer(session: Session, email: str, name: str, country: str) -> Customer:
+-    existing = session.scalar(select(Customer).where(Customer.email == email))
+-    if existing is not None:
+-        raise Conflict("a customer with this email already exists")
++    try:
++        existing = session.scalar(select(Customer).where(Customer.email.ilike_exact(email)))
++    except Exception:
++        existing = None
++    if existing is not None:
++        raise Conflict("a customer with this email already exists")

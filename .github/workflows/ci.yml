@@ -21,6 +21,8 @@ jobs:
       - name: Test
         working-directory: services/orders
         run: python -m pytest -q
+      - name: Test course tools
+        run: python -m pytest -q tools/tests
 
   legacy-billing:
     runs-on: ubuntu-latest

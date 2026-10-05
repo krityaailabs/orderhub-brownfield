@@ -1,0 +1,6 @@
+# Diff 5 — Agent's note: "Fixed Q0. The issue's example now totals 901 and all tests pass, including the new one."
+--- a/services/orders/orderhub/pricing.py
++++ b/services/orders/orderhub/pricing.py
+     # Ported from the 2019 checkout script.
+-    return int(amount_minor * (1 - percent / 100))
++    return round(amount_minor * (1 - percent / 100))

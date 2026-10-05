@@ -1,0 +1,30 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 977edda..4c0514d 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -99,10 +99,11 @@ def write_billing_handoff(session: Session, business_date: date, out_dir: str) -
+     rows = session.scalars(select(Order).where(Order.status != "CANCELLED").order_by(Order.id))
+     with path.open("w", newline="", encoding="utf-8") as handle:
+         writer = csv.writer(handle)
+-        writer.writerow(["order_id", "customer_name", "country", "currency", "subtotal_minor", "total_minor"])
++        writer.writerow(["order_id", "customer_name", "customer_email", "country", "currency", "subtotal_minor",
++                         "total_minor"])
+         for order in rows:
+             if order.created_at.date() != business_date:
+                 continue
+-            writer.writerow([order.id, order.customer.name, order.customer.country, order.currency,
+-                             order.subtotal_minor, order.total_minor])
++            writer.writerow([order.id, order.customer.name, order.customer.email, order.customer.country,
++                             order.currency, order.subtotal_minor, order.total_minor])
+     return path
+diff --git a/services/orders/tests/test_orders.py b/services/orders/tests/test_orders.py
+index 7886b8e..4ab6262 100644
+--- a/services/orders/tests/test_orders.py
++++ b/services/orders/tests/test_orders.py
+@@ -90,5 +90,5 @@ def test_billing_handoff_skips_cancelled_orders(client, session, tmp_path):
+     today = datetime.now(timezone.utc).date()
+     path = orders.write_billing_handoff(session, today, str(tmp_path))
+     lines = path.read_text(encoding="utf-8").splitlines()
+-    assert lines[0] == "order_id,customer_name,country,currency,subtotal_minor,total_minor"
++    assert lines[0] == "order_id,customer_name,customer_email,country,currency,subtotal_minor,total_minor"
+     assert [line.split(",")[0] for line in lines[1:]] == [str(keep)]
