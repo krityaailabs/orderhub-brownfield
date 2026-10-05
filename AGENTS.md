@@ -18,6 +18,7 @@ Run from the repository root. Use these exact commands; do not invent others.
 - Lint: `make lint`
 - End-to-end billing check (order service → CSV handoff → Java batch): `make billing-demo`
 - Context check: `make context-check`
+- Spec and plan check: `make spec-check`
 
 A change is done only when `make test`, `make lint` and, if it touches the billing handoff, `make billing-demo` all pass.
 

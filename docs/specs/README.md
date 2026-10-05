@@ -1,3 +1,3 @@
-# SPECS
+# Specifications
 
-Empty at tag s00. Specifications are added from Section 3.
+One spec per feature (`<name>.md`) and its plan (`<name>.plan.md`). Start from `template.md`. Check with `make spec-check`.

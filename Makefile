@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
 PY = .venv/Scripts/python
 endif
 
-.PHONY: help setup doctor test test-py test-tools test-java lint context-check billing-demo clean
+.PHONY: help setup doctor test test-py test-tools test-java lint spec-check context-check billing-demo clean
 
 help:
 	@echo "setup         create .venv and install pinned dependencies"
@@ -16,6 +16,7 @@ help:
 	@echo "test-tools    tests for the course tools"
 	@echo "test-java     legacy billing build and self-test only"
 	@echo "lint          ruff lint for the Python service"
+	@echo "spec-check    check specs and slice plans in docs/specs"
 	@echo "context-check check the agent context pack (AGENTS.md and friends)"
 	@echo "billing-demo  place orders, write the CSV handoff, run the legacy nightly batch"
 
@@ -40,6 +41,9 @@ test-java:
 
 lint:
 	$(PY) -m ruff check services/orders tools
+
+spec-check:
+	$(PY) tools/spec_check.py
 
 context-check:
 	$(PY) tools/context_check.py
