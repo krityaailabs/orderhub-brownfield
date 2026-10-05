@@ -31,7 +31,12 @@ def tax_minor(net_minor: int, country: str) -> int:
     (a remainder of exactly one half rounds to the even neighbour: 100.5 -> 100, 101.5 -> 102).
     Unknown countries have rate 0. Use integer arithmetic only (divmod), never floats.
     Raise ValueError for a negative net_minor (the legacy batch never receives one)."""
-    raise NotImplementedError("Lab s08: implement tax_minor")
+    if net_minor < 0:
+        raise ValueError("net_minor must not be negative")
+    quotient, remainder = divmod(net_minor * RATES_BP.get(country, 0), 10000)
+    if 2 * remainder > 10000 or (2 * remainder == 10000 and quotient % 2 == 1):
+        quotient += 1
+    return quotient
 
 
 def write_tax_handoff(session: Session, business_date: date, out_dir: str) -> Path:

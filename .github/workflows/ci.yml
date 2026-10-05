@@ -40,6 +40,10 @@ jobs:
         run: python -m pip install -r requirements.lock
       - name: Billing end to end
         run: python tools/e2e_billing.py
+      - name: Legacy output unchanged (golden master, Section 8)
+        run: python tools/billing_golden.py check
+      - name: Old and new tax paths identical (Project 2)
+        run: python tools/billing_compare.py
 
   legacy-billing:
     runs-on: ubuntu-latest

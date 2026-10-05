@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
 PY = .venv/Scripts/python
 endif
 
-.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo review-flags security clean
+.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo billing-golden billing-compare review-flags security clean
 
 help:
 	@echo "setup         create .venv and install pinned dependencies"
@@ -23,6 +23,8 @@ help:
 	@echo "spec-check    check specs and slice plans in docs/specs"
 	@echo "context-check check the agent context pack (AGENTS.md and friends)"
 	@echo "billing-demo  place orders, write the CSV handoff, run the legacy nightly batch"
+	@echo "billing-golden check the legacy batch output against the 50 recorded cases"
+	@echo "billing-compare old vs new tax path, record by record"
 	@echo "security      CI security gate: secrets, agent permissions, static analysis, dependencies, canary"
 	@echo "review-flags  point a reviewer at the risky lines of a diff (BASE=ref or DIFF=file)"
 
@@ -72,6 +74,12 @@ billing-demo:
 
 review-flags:
 	$(PY) tools/review_flags.py $(if $(BASE),--base $(BASE),) $(if $(DIFF),--diff $(DIFF),)
+
+billing-golden:
+	$(PY) tools/billing_golden.py check
+
+billing-compare:
+	$(PY) tools/billing_compare.py
 
 security:
 	$(PY) tools/security_gate.py

@@ -6,6 +6,8 @@ The nightly billing batch. Runs at 02:00; finance collects its output at 04:00. 
 
 - Build and self-test: `./build.sh` (from this folder), or `make test-java` from the repository root
 - Run the batch end to end: `make billing-demo` from the repository root
+- Golden master (52 records, byte for byte): `python tools/billing_golden.py check` from the repository root. Never re-record to make it pass.
+- Old vs new tax path: `python tools/billing_compare.py [COUNTRIES]`
 
 ## Contracts (do not break)
 
@@ -13,6 +15,9 @@ The nightly billing batch. Runs at 02:00; finance collects its output at 04:00. 
 - **Output:** `BILLYYYYMMDD.DAT`, fixed width, 80 characters per record, ISO-8859-1, CRLF line endings. Layout is in `FixedWidthExport.java`.
 - `docs/RECORD_LAYOUT.txt` (2017) is out of date: it says amounts are 10 characters; the code writes 11. The code is what finance currently receives.
 - Tax rounding is `HALF_EVEN` on the invoice net amount (`InvoiceCalculator`). It is not documented elsewhere. Do not change it without finance sign-off.
+
+- **Tax strangler (Project 2):** `BILLING_NEW_TAX_COUNTRIES=JP,AU` (or `*`) takes tax for those countries from `tax_YYYYMMDD.csv` in the handoff folder (written by `orderhub/billing_tax.py`). Unset or empty: legacy only. A routed order without a value stops the batch. Details and trailer use the same `TaxPolicy`.
+- Implicit contracts are listed in `docs/legacy/implicit-contracts.md`, one test each. Known issue Q16: a comma in a customer name stops the batch.
 
 ## Conventions
 

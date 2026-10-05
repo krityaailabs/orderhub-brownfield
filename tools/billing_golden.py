@@ -50,7 +50,34 @@ def cases() -> list[dict]:
 
     Tip: build the special cases first, then fill the rest with a simple, readable pattern. Don't
     use random numbers: the cases must be identical on every run."""
-    raise NotImplementedError("Lab s08: design the 50 golden cases")
+    special = [
+        ("Emma Clarke", "GB", 1250),
+        ("Chloé Dubois", "FR", 4999),
+        ("Giulia Rossi", "IT", 12345),
+        ("Arjun Mehta", "IN", 25),                           # 4.5 -> 4
+        ("Omar Haddad", "AE", 0),
+        ("Liam O'Brien", "AU", 1005),                        # 100.5 -> 100
+        ("田中 花子", "JP", 1015),                             # 101.5 -> 102; not Latin-1
+        ("Chinwe Okafor", "NG", 20),                         # 1.5 -> 2
+        ("Ben Carter", "US", 99_999_999),                    # no rate; largest amount
+        ("Test Customer", "ZZ", 777),                        # no rate
+        ("Bartholomew Montgomery-Fitzwilliam", "GB", 3333),  # 34 characters: truncated to 30
+        ("Søren Østergaard", "DK", 2500),                    # no rate; Latin-1 accents
+        ("Priya Nair", "IN", 75),                            # 13.5 -> 14
+        ("Kenji Sato", "JP", 2405),                          # 240.5 -> 240
+        ("Ngozi Eze", "NG", 60),                             # 4.5 -> 4
+    ]
+    rated = sorted(LEGACY_RATES)
+    rows = []
+    for i in range(1, 51):
+        if i <= len(special):
+            name, country, total = special[i - 1]
+        else:
+            country = rated[i % len(rated)]
+            name, total = f"Customer {i:02d}", 1000 + i * 137
+        rows.append({"order_id": i, "customer_name": name, "country": country, "currency": "USD",
+                     "subtotal_minor": total + (i % 3) * 100, "total_minor": total})
+    return rows
 
 
 def handoff_csv(rows: list[dict]) -> str:

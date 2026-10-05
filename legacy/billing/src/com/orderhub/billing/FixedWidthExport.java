@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -18,7 +19,14 @@ public class FixedWidthExport {
     }
 
     public static String detail(OrderRecord r) {
-        long tax = InvoiceCalculator.tax(r.totalMinor, r.country);
+        return detail(r, new LegacyTaxPolicy());
+    }
+
+    public static String detail(OrderRecord r, TaxPolicy policy) {
+        return detailWithTax(r, policy.tax(r));
+    }
+
+    static String detailWithTax(OrderRecord r, long tax) {
         long gross = r.totalMinor + tax;
         StringBuilder sb = new StringBuilder();
         sb.append("D");
@@ -37,15 +45,29 @@ public class FixedWidthExport {
     }
 
     public static void write(List<OrderRecord> records, Date businessDate, String path) throws IOException {
+        write(records, businessDate, path, new LegacyTaxPolicy());
+    }
+
+    /**
+     * The trailer total is the sum of the detail records' gross amounts, from the same policy.
+     * Every record is built before the file is opened, so a failure leaves no partial file behind.
+     */
+    public static void write(List<OrderRecord> records, Date businessDate, String path, TaxPolicy policy)
+            throws IOException {
+        List<String> details = new ArrayList<String>();
+        long sum = 0;
+        for (OrderRecord r : records) {
+            long tax = policy.tax(r);
+            details.add(detailWithTax(r, tax));
+            sum += r.totalMinor + tax;
+        }
         Writer w = new OutputStreamWriter(new FileOutputStream(path), "ISO-8859-1");
         try {
             w.write(header(businessDate));
             w.write("\r\n");
-            long sum = 0;
-            for (OrderRecord r : records) {
-                w.write(detail(r));
+            for (String d : details) {
+                w.write(d);
                 w.write("\r\n");
-                sum += InvoiceCalculator.gross(r.totalMinor, r.country);
             }
             w.write(trailer(records.size(), sum));
             w.write("\r\n");
