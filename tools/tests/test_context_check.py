@@ -146,8 +146,8 @@ def test_check_commands_reports_only_missing_backticked_targets():
 
 
 @pytest.mark.parametrize("line", [
-    "AWS key AKIAABCDEFGHIJKLMNOP",
-    "-----BEGIN RSA PRIVATE KEY-----",
+    "AWS key AKIAABCDEFGHIJKLMNOP",  # secret-scan: allow fake key that tests the context check
+    "-----BEGIN RSA PRIVATE KEY-----",  # secret-scan: allow fake key header that tests the context check
     "token sk-abcdefghijklmnopqrstuvwxyz123456",
     "password = hunter22hunter",
 ])

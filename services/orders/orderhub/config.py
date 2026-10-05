@@ -22,6 +22,6 @@ def load_settings() -> Settings:
         currency=os.environ.get("ORDERHUB_CURRENCY", "USD"),
         billing_handoff_dir=os.environ.get("ORDERHUB_BILLING_HANDOFF_DIR", "./handoff"),
         warehouse_webhook_url=os.environ.get("ORDERHUB_WAREHOUSE_WEBHOOK_URL") or None,
-        # Default so the webhook works out of the box in local runs.
-        warehouse_token=os.environ.get("ORDERHUB_WAREHOUSE_TOKEN", "whk_live_4f9c2a7e1b8d6035c9e2f71a"),
+        # Credentials come from the environment only (secret store in production); never a default.
+        warehouse_token=os.environ.get("ORDERHUB_WAREHOUSE_TOKEN") or None,
     )

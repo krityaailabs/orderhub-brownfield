@@ -70,7 +70,10 @@ def is_placeholder(value: str) -> bool:
       - it contains any of PLACEHOLDER_WORDS (e.g. "example", "changeme", "<", "${")
       - or it is one character repeated (e.g. "xxxxxxxxxxxxxxxx", "0000000000000000")
     Everything else is treated as possibly real."""
-    raise NotImplementedError("Lab s07: implement is_placeholder")
+    lowered = value.lower()
+    if any(word in lowered for word in PLACEHOLDER_WORDS):
+        return True
+    return len(set(lowered)) == 1
 
 
 def find_secrets(path: str, text: str) -> list[Finding]:
@@ -85,7 +88,19 @@ def find_secrets(path: str, text: str) -> list[Finding]:
       - Skip the whole line if it contains ALLOW_MARKER.
       - Report at most one finding per line: the first rule (in RULES order) that matches.
       - Line numbers start at 1. The preview is redact(value)."""
-    raise NotImplementedError("Lab s07: implement find_secrets")
+    name = Path(path).name
+    if name == ".env" or name.endswith(".env"):
+        return [Finding(path, 1, "env-file", "committed .env file")]
+    findings: list[Finding] = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if ALLOW_MARKER in line:
+            continue
+        for rule, pattern, group in RULES:
+            hit = next((m.group(group) for m in pattern.finditer(line) if not is_placeholder(m.group(group))), None)
+            if hit is not None:
+                findings.append(Finding(path, number, rule, redact(hit)))
+                break
+    return findings
 
 
 def _git(*args: str) -> list[str]:

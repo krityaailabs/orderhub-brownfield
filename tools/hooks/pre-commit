@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Git pre-commit hook for OrderHub Brownfield. Installed by `make install-hooks`.
-# Runs only the checks the staged files need. Bypass with `git commit --no-verify` (and say why in review).
+# 1. Runs only the checks the staged files need. 2. Scans staged files for secrets.
+# Bypass with `git commit --no-verify` (and say why in review; CI runs the same checks).
 ROOT=$(git rev-parse --show-toplevel)
 PY="$ROOT/.venv/bin/python"; [ -x "$PY" ] || PY=python3
-exec "$PY" "$ROOT/tools/precommit.py"
+"$PY" "$ROOT/tools/precommit.py"; checks=$?
+"$PY" "$ROOT/tools/secret_scan.py"; secrets=$?
+[ $checks -eq 0 ] && [ $secrets -eq 0 ]

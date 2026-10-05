@@ -1,11 +1,53 @@
 {
   "permissions": {
     "allow": [
-      "Bash",
-      "Edit",
-      "WebFetch"
+      "Bash(make test)",
+      "Bash(make test-py)",
+      "Bash(make test-tools)",
+      "Bash(make test-java)",
+      "Bash(make lint)",
+      "Bash(make precommit)",
+      "Bash(make spec-check)",
+      "Bash(make context-check)",
+      "Bash(make billing-demo)",
+      "Bash(make protect-tests)",
+      "Bash(make security)",
+      "Bash(make review-flags *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git worktree list)"
     ],
-    "defaultMode": "acceptEdits"
+    "ask": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout *)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(pip install *)",
+      "Bash(python -m pip install *)",
+      "Bash(npm install *)",
+      "WebFetch",
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Edit(./.env)",
+      "Edit(./instructor/**)",
+      "Edit(./.claude/**)",
+      "Edit(./.github/workflows/**)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false
   },
   "hooks": {
     "PostToolUse": [
