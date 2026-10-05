@@ -6,7 +6,7 @@ With no arguments, checks every docs/specs/<name>.md that has a matching <name>.
 The checks are a rubric, not a judge of quality: a spec can pass and still be wrong.
 """
 
-import re  # noqa: F401  (used once the Lab s03 stubs are implemented)
+import re
 import sys
 from pathlib import Path
 
@@ -17,7 +17,20 @@ MAX_SLICE_LINES = 300
 
 def parse_sections(text: str) -> dict[str, str]:
     """Split markdown into {level-2 heading: body}. Headings keep their original case."""
-    raise NotImplementedError("Lab s03: implement parse_sections")
+    sections: dict[str, str] = {}
+    current = None
+    buffer: list[str] = []
+    for line in text.splitlines():
+        m = re.match(r"^##\s+(.+?)\s*$", line)
+        if m and not line.startswith("###"):
+            if current is not None:
+                sections[current] = "\n".join(buffer).strip()
+            current, buffer = m.group(1), []
+        elif current is not None:
+            buffer.append(line)
+    if current is not None:
+        sections[current] = "\n".join(buffer).strip()
+    return sections
 
 
 def _section(sections: dict[str, str], name: str) -> str | None:
@@ -32,7 +45,13 @@ def parse_criteria(text: str) -> list[tuple[str, str]]:
 
     A criterion is a bullet that starts with a bold id: `- **AC-1** Given ..., when ..., then ...`.
     The text is everything after the id, stripped. Order is preserved. No section: empty list."""
-    raise NotImplementedError("Lab s03: implement parse_criteria")
+    body = _section(parse_sections(text), "Acceptance criteria")
+    if body is None:
+        return []
+    out = []
+    for m in re.finditer(r"^\s*-\s+\*\*(AC-\d+)\*\*\s*(.+)$", body, flags=re.M):
+        out.append((m.group(1), m.group(2).strip()))
+    return out
 
 
 def check_spec(text: str) -> list[str]:
@@ -47,7 +66,27 @@ def check_spec(text: str) -> list[str]:
     - 'non-goals: list at least one' if the Non-goals section has no bullet
     - 'unresolved TODO' if the text contains TODO anywhere
     """
-    raise NotImplementedError("Lab s03: implement check_spec")
+    problems = []
+    sections = parse_sections(text)
+    for name in REQUIRED_SECTIONS:
+        if _section(sections, name) is None:
+            problems.append(f"missing section: {name}")
+    criteria = parse_criteria(text)
+    if len(criteria) < MIN_CRITERIA:
+        problems.append(f"too few acceptance criteria: {len(criteria)} (minimum {MIN_CRITERIA})")
+    if [cid for cid, _ in criteria] != [f"AC-{i}" for i in range(1, len(criteria) + 1)]:
+        problems.append("criteria ids must be AC-1..AC-n in order")
+    for cid, body in criteria:
+        lowered = body.lower()
+        positions = [re.search(rf"\b{word}\b", lowered) for word in ("given", "when", "then")]
+        if not all(positions) or not (positions[0].start() < positions[1].start() < positions[2].start()):
+            problems.append(f"{cid}: needs Given, When and Then in that order")
+    non_goals = _section(sections, "Non-goals")
+    if non_goals is not None and not re.search(r"^\s*-\s+\S", non_goals, flags=re.M):
+        problems.append("non-goals: list at least one")
+    if "TODO" in text:
+        problems.append("unresolved TODO")
+    return problems
 
 
 def parse_slices(plan_text: str) -> list[dict]:
@@ -58,7 +97,27 @@ def parse_slices(plan_text: str) -> list[dict]:
       - Depends on: S1, S2   (or 'none')
     Return [{'id': 'S1', 'title': str, 'criteria': [..], 'size': int | None, 'depends': [..]}]
     in document order. Missing lines give [] or None."""
-    raise NotImplementedError("Lab s03: implement parse_slices")
+    slices = []
+    blocks = re.split(r"^###\s+", plan_text, flags=re.M)[1:]
+    for block in blocks:
+        head, _, rest = block.partition("\n")
+        m = re.match(r"(S\d+)\s*:\s*(.+)", head.strip())
+        if not m:
+            continue
+        crit = re.search(r"^\s*-\s*Criteria:\s*(.+)$", rest, flags=re.M | re.I)
+        size = re.search(r"^\s*-\s*Size:\s*~?\s*(\d+)", rest, flags=re.M | re.I)
+        deps = re.search(r"^\s*-\s*Depends on:\s*(.+)$", rest, flags=re.M | re.I)
+        dep_list = []
+        if deps and deps.group(1).strip().lower() != "none":
+            dep_list = re.findall(r"S\d+", deps.group(1))
+        slices.append({
+            "id": m.group(1),
+            "title": m.group(2).strip(),
+            "criteria": re.findall(r"AC-\d+", crit.group(1)) if crit else [],
+            "size": int(size.group(1)) if size else None,
+            "depends": dep_list,
+        })
+    return slices
 
 
 def check_slices(slices: list[dict], criteria_ids: list[str], max_lines: int = MAX_SLICE_LINES) -> list[str]:
@@ -72,7 +131,31 @@ def check_slices(slices: list[dict], criteria_ids: list[str], max_lines: int = M
     - '<slice>: depends on <dep>, which is not an earlier slice'
     - '<criterion>: not covered by any slice' for each criterion no slice references
     """
-    raise NotImplementedError("Lab s03: implement check_slices")
+    if not slices:
+        return ["no slices"]
+    problems = []
+    seen: list[str] = []
+    covered: set[str] = set()
+    for s in slices:
+        sid = s["id"]
+        if not s["criteria"]:
+            problems.append(f"{sid}: covers no acceptance criterion")
+        for cid in s["criteria"]:
+            if cid not in criteria_ids:
+                problems.append(f"{sid}: unknown criterion {cid}")
+            covered.add(cid)
+        if s["size"] is None:
+            problems.append(f"{sid}: no size estimate")
+        elif s["size"] > max_lines:
+            problems.append(f"{sid}: ~{s['size']} lines is over the {max_lines} line review budget; split it")
+        for dep in s["depends"]:
+            if dep not in seen:
+                problems.append(f"{sid}: depends on {dep}, which is not an earlier slice")
+        seen.append(sid)
+    for cid in criteria_ids:
+        if cid not in covered:
+            problems.append(f"{cid}: not covered by any slice")
+    return problems
 
 
 def check_pair(spec_path: Path, plan_path: Path) -> list[str]:
