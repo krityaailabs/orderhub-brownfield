@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from . import pricing
 from .errors import Conflict, NotFound, ValidationFailed
@@ -64,12 +64,16 @@ def get_order(session: Session, order_id: int) -> Order:
 def list_orders(session: Session, status: str | None = None, limit: int = 50) -> list[dict]:
     """List orders with their lines (SKU and quantity) for the ops dashboard.
 
-    limit=0 returns every matching order, so the dashboard can fetch a whole day at once."""
-    query = select(Order).order_by(Order.id)
+    Loads customers, lines and products up front, so the number of queries doesn't grow with the
+    number of orders. The caller bounds limit (the API allows 1 to 200)."""
+    query = (
+        select(Order)
+        .options(joinedload(Order.customer), selectinload(Order.lines).selectinload(OrderLine.product))
+        .order_by(Order.id)
+        .limit(limit)
+    )
     if status:
         query = query.where(Order.status == status)
-    if limit:
-        query = query.limit(limit)
     result = []
     for order in session.scalars(query):
         result.append({

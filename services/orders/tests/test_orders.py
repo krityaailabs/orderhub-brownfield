@@ -100,7 +100,18 @@ def test_list_orders_includes_lines(client):
     assert listed[-1]["lines"] == [{"sku": "MUG-350", "quantity": 2}]
 
 
-def test_list_orders_limit_zero_returns_all(client):
-    for _ in range(3):
-        place(client, [{"sku": "MUG-350", "quantity": 1}])
-    assert len(client.get("/orders", params={"limit": 0}).json()) >= 3
+def test_list_orders_limit_is_bounded(client):
+    # Replaces the R4 test "limit=0 returns all": an unbounded list was not part of the task (review of R4).
+    assert client.get("/orders", params={"limit": 0}).status_code == 422
+    assert client.get("/orders", params={"limit": 201}).status_code == 422
+    assert client.get("/orders", params={"limit": 200}).status_code == 200
+
+
+def test_list_orders_query_count_does_not_grow_with_orders(client, count_queries):
+    # Regression for R4: lines were loaded lazily, one query per order (N+1).
+    for _ in range(30):
+        place(client, [{"sku": "MUG-350", "quantity": 1}, {"sku": "NB-A5", "quantity": 2}])
+    with count_queries() as statements:
+        listed = client.get("/orders", params={"limit": 30}).json()
+    assert len(listed) == 30
+    assert len(statements) <= 4, f"{len(statements)} queries"

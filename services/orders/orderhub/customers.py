@@ -29,12 +29,13 @@ def get_customer(session: Session, customer_id: int) -> Customer:
     return customer
 
 
-def update_customer(session: Session, customer_id: int, name: str | None = None,
-                    email: str | None = None) -> Customer:
+def update_customer(session: Session, customer_id: int, name: str) -> Customer:
+    """Correct a customer's name (support task). Email changes are out of scope: they need the same
+    validation and duplicate checks as create_customer, and a decision about who may make them."""
+    name = name.strip()
+    if not name:
+        raise ValidationFailed("name must not be empty")
     customer = get_customer(session, customer_id)
-    if name is not None:
-        customer.name = name.strip()
-    if email is not None:
-        customer.email = email.strip()
+    customer.name = name
     session.commit()
     return customer

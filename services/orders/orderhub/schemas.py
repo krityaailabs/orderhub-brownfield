@@ -1,6 +1,6 @@
 """Request and response models for the HTTP API."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CustomerIn(BaseModel):
@@ -10,8 +10,10 @@ class CustomerIn(BaseModel):
 
 
 class CustomerPatch(BaseModel):
-    name: str | None = None
-    email: str | None = None
+    """Only the name can be corrected through the API (issue: support fixes typos)."""
+
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1)
 
 
 class CustomerOut(BaseModel):

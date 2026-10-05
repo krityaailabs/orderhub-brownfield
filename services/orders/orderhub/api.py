@@ -1,6 +1,6 @@
 """HTTP API (FastAPI)."""
 
-from fastapi import Depends, FastAPI, Header, Request
+from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.responses import JSONResponse
 
 from . import customers, idempotency, notify, orders, pricing
@@ -52,7 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.patch("/customers/{customer_id}", response_model=CustomerOut)
     def update_customer(customer_id: int, body: CustomerPatch, session=Depends(get_session)):
-        c = customers.update_customer(session, customer_id, name=body.name, email=body.email)
+        c = customers.update_customer(session, customer_id, name=body.name)
         return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
 
     @app.post("/orders", status_code=201, response_model=OrderOut)
@@ -66,28 +66,35 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return order_out(orders.get_order(session, order_id))
 
     @app.get("/orders")
-    def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
+    def list_orders(status: str | None = None, limit: int = Query(50, ge=1, le=200), session=Depends(get_session)):
         return orders.list_orders(session, status=status, limit=limit)
+
+    app.state.notify_transport = None  # tests inject httpx.MockTransport here
 
     def notify_warehouse(body: dict) -> None:
         if settings.warehouse_webhook_url:
             lines = [{"product_id": line["product_id"], "quantity": line["quantity"]} for line in body["lines"]]
-            notify.order_cancelled(settings.warehouse_webhook_url, body["id"], lines)
+            notify.order_cancelled(settings.warehouse_webhook_url, body["id"], lines,
+                                   transport=app.state.notify_transport)
+
+    def cancel_and_notify(session, order_id: int) -> dict:
+        already_cancelled = orders.get_order(session, order_id).status == "CANCELLED"
+        body = order_out(orders.cancel_order(session, order_id)).model_dump()
+        if not already_cancelled:
+            notify_warehouse(body)
+        return body
 
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
     def cancel_order(order_id: int, session=Depends(get_session),
                      idempotency_key: str | None = Header(default=None)):
         if idempotency_key is None:
-            body = order_out(orders.cancel_order(session, order_id)).model_dump()
-            notify_warehouse(body)
-            return body
+            return cancel_and_notify(session, order_id)
         fingerprint = idempotency.request_fingerprint("POST", f"/orders/{order_id}/cancel", None)
         stored = idempotency.lookup(session, idempotency_key, fingerprint)
         if stored is not None:
             return JSONResponse(status_code=stored[0], content=stored[1])
-        body = order_out(orders.cancel_order(session, order_id)).model_dump()
+        body = cancel_and_notify(session, order_id)
         idempotency.record(session, idempotency_key, fingerprint, 200, body)
-        notify_warehouse(body)
         return body
 
     @app.post("/orders/{order_id}/ship", response_model=OrderOut)

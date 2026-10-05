@@ -22,3 +22,14 @@ def test_support_can_correct_a_name(client):
 
 def test_update_missing_customer(client):
     assert client.patch("/customers/999", json={"name": "X"}).status_code == 404
+
+
+def test_patch_cannot_change_email(client):
+    # Regression for R8: email changes were added "for flexibility" without validation or duplicate checks.
+    r = client.patch("/customers/1", json={"email": "not-an-email"})
+    assert r.status_code == 422
+    assert client.patch("/customers/1", json={"name": "A", "email": "x@example.com"}).status_code == 422
+
+
+def test_patch_rejects_an_empty_name(client):
+    assert client.patch("/customers/1", json={"name": ""}).status_code == 422
