@@ -1,110 +1,110 @@
 {
  "currency": "illustrative cost units (not a real price; replace with your own currency and figures)",
- "note": "Fill every value and its source (measured:, quote: or assumption:). The model refuses to run until you do.",
+ "note": "Lab s12 reference. Measured values come from labs/s12/metrics-report.md (synthetic history). Every assumption says why.",
  "shared": {
   "loaded_cost_per_engineer_hour": {
-   "value": null,
-   "source": ""
+   "value": 100,
+   "source": "assumption: illustrative round number; use your finance team's loaded cost (salary, benefits, overheads)"
   },
   "rework_hours_per_reworked_pr": {
-   "value": null,
-   "source": ""
+   "value": 4,
+   "source": "assumption: half a day to diagnose, fix, review and ship a fix; replace with a sample of real fixes"
   }
  },
  "arms": {
   "baseline": {
    "licence_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 0,
+    "source": "measured: no agent licences before the rollout"
    },
    "agent_usage_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 0,
+    "source": "measured: no agent usage before the rollout"
    },
    "merged_prs_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 3.6,
+    "source": "measured: 87 PRs / 8 engineers / 13 weeks x 4.33 (metrics report, baseline)"
    },
    "author_hours_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 27.8,
+    "source": "assumption: 100 delivery hours per engineer-month (time study not done) / 3.6 measured PRs"
    },
    "review_hours_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 0.5,
+    "source": "assumption: review effort isn't in the exports (they record waiting time); half an hour for a median 74-line PR"
    },
    "rework_rate": {
-    "value": null,
-    "source": ""
+    "value": 0.09,
+    "source": "measured: 8 of 87 baseline PRs fixed or reverted within 21 days"
    },
    "enablement_hours_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 0,
+    "source": "measured: no rollout activity before the rollout"
    }
   },
   "agents": {
    "licence_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 40,
+    "source": "assumption: illustrative; use your contract's price per seat per month"
    },
    "agent_usage_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 3,
+    "source": "assumption: illustrative; measure as your usage bill / merged agent-assisted PRs"
    },
    "merged_prs_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 8.9,
+    "source": "measured: heavy users, 107 PRs / 4 people / 13 weeks x 4.33 (metrics report, same people); self-selected group, see Lecture 12.5"
    },
    "author_hours_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 11.2,
+    "source": "assumption: 100 delivery hours per engineer-month / 8.9 measured PRs; PRs are bigger now (median 150 vs 63 lines for the same people), so 'per PR' is not the same unit as the baseline"
    },
    "review_hours_per_pr": {
-    "value": null,
-    "source": ""
+    "value": 1.0,
+    "source": "assumption: review grows with size: median 170 lines (measured) vs 74; one hour, not scaled linearly"
    },
    "rework_rate": {
-    "value": null,
-    "source": ""
+    "value": 0.17,
+    "source": "measured: 13 of 77 agent-assisted PRs (people) fixed or reverted within 21 days"
    },
    "enablement_hours_per_engineer_month": {
-    "value": null,
-    "source": ""
+    "value": 4,
+    "source": "assumption: training, kit upkeep and champions' time, spread across the team"
    }
   }
  },
  "scenarios": {
   "small": {
    "engineers": {
-    "value": null,
-    "source": ""
+    "value": 8,
+    "source": "assumption: a single team"
    },
    "agents": {
     "enablement_hours_per_engineer_month": {
-     "value": null,
-     "source": ""
+     "value": 6,
+     "source": "assumption: no platform team: champions carry enablement"
     }
    }
   },
   "medium": {
    "engineers": {
-    "value": null,
-    "source": ""
+    "value": 40,
+    "source": "assumption: five teams"
    }
   },
   "large": {
    "engineers": {
-    "value": null,
-    "source": ""
+    "value": 200,
+    "source": "assumption: a department"
    },
    "agents": {
     "licence_per_engineer_month": {
-     "value": null,
-     "source": ""
+     "value": 32,
+     "source": "assumption: illustrative volume discount of 20%; use your contract"
     },
     "enablement_hours_per_engineer_month": {
-     "value": null,
-     "source": ""
+     "value": 2,
+     "source": "assumption: a platform team maintains the kit for everyone"
     }
    }
   }

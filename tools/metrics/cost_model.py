@@ -44,7 +44,25 @@ def validate(params: dict) -> list[str]:
       "<name>: must be > 0"             merged_prs_per_engineer_month and engineers must be positive
       "<name>: must be 0..1"            rework_rate outside 0 to 1
     Unknown parameter names are problems too ("<name>: unknown"), after the known ones, sorted."""
-    raise NotImplementedError("Lab s12: implement validate (Lecture 12.4)")
+    problems = []
+    for name in PARAMETERS:
+        entry = params.get(name)
+        if entry is None:
+            problems.append(f"{name}: missing")
+            continue
+        value, source = entry.get("value"), str(entry.get("source") or "")
+        if value is None:
+            problems.append(f"{name}: no value")
+        if not source.startswith(SOURCE_KINDS):
+            problems.append(f"{name}: no source")
+        if value is None:
+            continue
+        if name in ("merged_prs_per_engineer_month", "engineers") and value <= 0:
+            problems.append(f"{name}: must be > 0")
+        if name == "rework_rate" and not 0 <= value <= 1:
+            problems.append(f"{name}: must be 0..1")
+    problems += [f"{name}: unknown" for name in sorted(set(params) - set(PARAMETERS))]
+    return problems
 
 
 def cost_per_merged_pr(params: dict) -> dict:
@@ -53,7 +71,23 @@ def cost_per_merged_pr(params: dict) -> dict:
       assumptions  number of parameters whose source starts with "assumption:"
       monthly      total x engineers x merged_prs_per_engineer_month, rounded to 0 places
     Raises ValueError listing every problem from validate() if there are any."""
-    raise NotImplementedError("Lab s12: implement cost_per_merged_pr (Lecture 12.4)")
+    problems = validate(params)
+    if problems:
+        raise ValueError("; ".join(problems))
+    v = {name: params[name]["value"] for name in PARAMETERS}
+    rate, prs = v["loaded_cost_per_engineer_hour"], v["merged_prs_per_engineer_month"]
+    parts = {"licence": v["licence_per_engineer_month"] / prs,
+             "enablement": v["enablement_hours_per_engineer_month"] * rate / prs,
+             "usage": v["agent_usage_per_pr"],
+             "author": v["author_hours_per_pr"] * rate,
+             "review": v["review_hours_per_pr"] * rate,
+             "rework": v["rework_rate"] * v["rework_hours_per_reworked_pr"] * rate}
+    total = sum(parts.values())
+    result = {k: round(x, 2) for k, x in parts.items()}
+    result["total"] = round(total, 2)
+    result["assumptions"] = sum(str(params[n]["source"]).startswith("assumption:") for n in PARAMETERS)
+    result["monthly"] = round(total * v["engineers"] * prs)
+    return result
 
 
 def merged(config: dict, arm: str, scenario: str) -> dict:
