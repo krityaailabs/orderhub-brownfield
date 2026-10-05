@@ -17,7 +17,7 @@ Reference answers: `ANSWERS.md`. Try each exercise before you open it.
 ## Prove the Q3 wrong turn (Lecture 1.5, about 5 minutes)
 
 ```bash
-git switch -c s01-q3-experiment s00
+git switch -c s01-q3-experiment s01
 git apply labs/s01/q3-wrong-turn.patch
 make test            # Python and Java both pass
 make billing-demo    # the nightly batch fails
