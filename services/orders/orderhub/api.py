@@ -75,7 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.warehouse_webhook_url:
             lines = [{"product_id": line["product_id"], "quantity": line["quantity"]} for line in body["lines"]]
             notify.order_cancelled(settings.warehouse_webhook_url, body["id"], lines,
-                                   transport=app.state.notify_transport)
+                                   transport=app.state.notify_transport, token=settings.warehouse_token)
 
     def cancel_and_notify(session, order_id: int) -> dict:
         already_cancelled = orders.get_order(session, order_id).status == "CANCELLED"

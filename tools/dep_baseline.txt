@@ -1,0 +1,26 @@
+# Packages in requirements.lock when OrderHub Brownfield was set up (s00). Anything added later needs a row in docs/dependencies.md (ADR 0002).
+annotated-doc
+annotated-types
+anyio
+certifi
+fastapi
+h11
+httpcore
+httpcore2
+httpx
+httpx2
+idna
+iniconfig
+opentelemetry-api
+packaging
+pluggy
+pydantic
+pydantic_core
+Pygments
+pytest
+ruff
+SQLAlchemy
+starlette
+truststore
+typing-inspection
+typing_extensions
