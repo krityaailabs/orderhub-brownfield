@@ -23,8 +23,11 @@ def apply_percentage_discount(amount_minor: int, percent: int) -> int:
     """Return the total after taking `percent` off `amount_minor`."""
     if not 0 <= percent <= 90:
         raise ValueError("percent must be between 0 and 90")
-    # Ported from the 2019 checkout script.
-    return int(amount_minor * (1 - percent / 100))
+    if amount_minor < 0:
+        raise ValueError("amount must not be negative")
+    # Integer arithmetic only: round the discount half-up, then subtract it.
+    discount = (amount_minor * percent + 50) // 100
+    return amount_minor - discount
 
 
 def format_money(amount_minor: int, currency: str) -> str:

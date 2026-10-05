@@ -1,6 +1,6 @@
 """Customer operations."""
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .errors import Conflict, NotFound, ValidationFailed
@@ -13,7 +13,7 @@ def create_customer(session: Session, email: str, name: str, country: str) -> Cu
         raise ValidationFailed("email is not valid")
     if len(country) != 2:
         raise ValidationFailed("country must be an ISO 3166-1 alpha-2 code")
-    existing = session.scalar(select(Customer).where(Customer.email == email))
+    existing = session.scalar(select(Customer).where(func.lower(Customer.email) == email.lower()))
     if existing is not None:
         raise Conflict("a customer with this email already exists")
     customer = Customer(email=email, name=name.strip(), country=country.upper())
