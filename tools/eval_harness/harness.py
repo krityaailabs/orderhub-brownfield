@@ -27,7 +27,7 @@ import csv
 import fnmatch
 import json
 import shutil
-import statistics  # noqa: F401  (used once summarise is implemented)
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -43,7 +43,15 @@ RESULTS = ROOT / "labs" / "s10" / "results.json"
 def is_success(result: dict) -> bool:
     """A task succeeds only if the patch applied AND acceptance, full suite and lint all passed AND
     every changed file was in scope. Anything else is a failure, however close."""
-    raise NotImplementedError("Lab s10: implement is_success")
+    return all(result[k] for k in ("applied", "acceptance", "full_suite", "lint", "in_scope"))
+
+
+def _reason(result: dict) -> str:
+    for key, reason in (("applied", "patch did not apply"), ("acceptance", "acceptance"),
+                        ("full_suite", "full suite"), ("lint", "lint"), ("in_scope", "out of scope")):
+        if not result[key]:
+            return reason
+    return ""
 
 
 def summarise(results: list[dict]) -> dict[str, dict]:
@@ -60,7 +68,22 @@ def summarise(results: list[dict]) -> dict[str, dict]:
                             check in this order: "patch did not apply", "acceptance", "full suite",
                             "lint", "out of scope"
     Use statistics.median for medians."""
-    raise NotImplementedError("Lab s10: implement summarise")
+    summary: dict[str, dict] = {}
+    for tool in dict.fromkeys(r["tool"] for r in results):
+        mine = [r for r in results if r["tool"] == tool]
+        ok = [r for r in mine if is_success(r)]
+        total = round(sum(r["usd"] for r in mine), 2)
+        summary[tool] = {
+            "tasks": len(mine),
+            "successes": len(ok),
+            "success_rate": round(len(ok) / len(mine), 2),
+            "total_usd": total,
+            "cost_per_success": round(total / len(ok), 2) if ok else None,
+            "median_review_minutes": statistics.median(r["review_minutes"] for r in ok) if ok else None,
+            "median_changed_lines": statistics.median(r["changed_lines"] for r in ok) if ok else None,
+            "failures": {r["task"]: _reason(r) for r in mine if not is_success(r)},
+        }
+    return summary
 
 
 def _run(cmd: list[str], cwd: Path) -> bool:
