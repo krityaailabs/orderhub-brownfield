@@ -1,0 +1,78 @@
+diff --git a/services/orders/orderhub/api.py b/services/orders/orderhub/api.py
+index 4488f40..554045c 100644
+--- a/services/orders/orderhub/api.py
++++ b/services/orders/orderhub/api.py
+@@ -7,7 +7,7 @@ from . import customers, idempotency, notify, orders, pricing
+ from .config import Settings, load_settings
+ from .db import Base, make_engine, make_session_factory
+ from .errors import OrderHubError
+-from .schemas import CustomerIn, CustomerOut, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
++from .schemas import CustomerIn, CustomerOut, CustomerPatch, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
+ 
+ 
+ def create_app(settings: Settings | None = None) -> FastAPI:
+@@ -50,6 +50,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+         c = customers.create_customer(session, body.email, body.name, body.country)
+         return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
+ 
++    @app.patch("/customers/{customer_id}", response_model=CustomerOut)
++    def update_customer(customer_id: int, body: CustomerPatch, session=Depends(get_session)):
++        c = customers.update_customer(session, customer_id, name=body.name, email=body.email)
++        return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
++
+     @app.post("/orders", status_code=201, response_model=OrderOut)
+     def place_order(body: OrderIn, session=Depends(get_session)):
+         order = orders.place_order(session, body.customer_id, [i.model_dump() for i in body.items],
+diff --git a/services/orders/orderhub/customers.py b/services/orders/orderhub/customers.py
+index 60bd5cc..2378462 100644
+--- a/services/orders/orderhub/customers.py
++++ b/services/orders/orderhub/customers.py
+@@ -27,3 +27,14 @@ def get_customer(session: Session, customer_id: int) -> Customer:
+     if customer is None:
+         raise NotFound(f"customer {customer_id} not found")
+     return customer
++
++
++def update_customer(session: Session, customer_id: int, name: str | None = None,
++                    email: str | None = None) -> Customer:
++    customer = get_customer(session, customer_id)
++    if name is not None:
++        customer.name = name.strip()
++    if email is not None:
++        customer.email = email.strip()
++    session.commit()
++    return customer
+diff --git a/services/orders/orderhub/schemas.py b/services/orders/orderhub/schemas.py
+index 7da8b12..c449bfe 100644
+--- a/services/orders/orderhub/schemas.py
++++ b/services/orders/orderhub/schemas.py
+@@ -9,6 +9,11 @@ class CustomerIn(BaseModel):
+     country: str = Field(min_length=2, max_length=2)
+ 
+ 
++class CustomerPatch(BaseModel):
++    name: str | None = None
++    email: str | None = None
++
++
+ class CustomerOut(BaseModel):
+     id: int
+     email: str
+diff --git a/services/orders/tests/test_customers.py b/services/orders/tests/test_customers.py
+index 2ce64f6..34c9b40 100644
+--- a/services/orders/tests/test_customers.py
++++ b/services/orders/tests/test_customers.py
+@@ -12,3 +12,13 @@ def test_duplicate_email_is_rejected(client):
+ def test_invalid_email_is_rejected(client):
+     r = client.post("/customers", json={"email": "not-an-email", "name": "X", "country": "GB"})
+     assert r.status_code == 422
++
++
++def test_support_can_correct_a_name(client):
++    r = client.patch("/customers/1", json={"name": "Aiko Tanaka-Sato"})
++    assert r.status_code == 200
++    assert r.json()["name"] == "Aiko Tanaka-Sato"
++
++
++def test_update_missing_customer(client):
++    assert client.patch("/customers/999", json={"name": "X"}).status_code == 404

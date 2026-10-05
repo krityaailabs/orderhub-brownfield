@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
 PY = .venv/Scripts/python
 endif
 
-.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo clean
+.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo review-flags clean
 
 help:
 	@echo "setup         create .venv and install pinned dependencies"
@@ -23,6 +23,7 @@ help:
 	@echo "spec-check    check specs and slice plans in docs/specs"
 	@echo "context-check check the agent context pack (AGENTS.md and friends)"
 	@echo "billing-demo  place orders, write the CSV handoff, run the legacy nightly batch"
+	@echo "review-flags  point a reviewer at the risky lines of a diff (BASE=ref or DIFF=file)"
 
 setup:
 	python3 -m venv .venv
@@ -67,6 +68,9 @@ context-check:
 
 billing-demo:
 	$(PY) tools/e2e_billing.py
+
+review-flags:
+	$(PY) tools/review_flags.py $(if $(BASE),--base $(BASE),) $(if $(DIFF),--diff $(DIFF),)
 
 clean:
 	rm -rf out legacy/billing/build services/orders/.pytest_cache

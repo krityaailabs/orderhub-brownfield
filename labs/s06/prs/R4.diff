@@ -1,0 +1,63 @@
+diff --git a/services/orders/orderhub/api.py b/services/orders/orderhub/api.py
+index de4ee65..5fc0e78 100644
+--- a/services/orders/orderhub/api.py
++++ b/services/orders/orderhub/api.py
+@@ -62,7 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+ 
+     @app.get("/orders")
+     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
+-        return orders.list_orders(session, status=status, limit=min(limit, 200))
++        return orders.list_orders(session, status=status, limit=limit)
+ 
+     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
+     def cancel_order(order_id: int, session=Depends(get_session),
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 7afabb8..9cd101a 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -62,18 +62,23 @@ def get_order(session: Session, order_id: int) -> Order:
+ 
+ 
+ def list_orders(session: Session, status: str | None = None, limit: int = 50) -> list[dict]:
++    """List orders with their lines (SKU and quantity) for the ops dashboard.
++
++    limit=0 returns every matching order, so the dashboard can fetch a whole day at once."""
+     query = select(Order).order_by(Order.id)
+     if status:
+         query = query.where(Order.status == status)
++    if limit:
++        query = query.limit(limit)
+     result = []
+-    for order in session.scalars(query.limit(limit)):
+-        # Each access below loads lazily: one query for the customer and one for the lines, per order.
++    for order in session.scalars(query):
+         result.append({
+             "id": order.id,
+             "customer_email": order.customer.email,
+             "status": order.status,
+             "total_minor": order.total_minor,
+             "line_count": len(order.lines),
++            "lines": [{"sku": line.product.sku, "quantity": line.quantity} for line in order.lines],
+         })
+     return result
+ 
+diff --git a/services/orders/tests/test_orders.py b/services/orders/tests/test_orders.py
+index 7886b8e..d24e137 100644
+--- a/services/orders/tests/test_orders.py
++++ b/services/orders/tests/test_orders.py
+@@ -92,3 +92,15 @@ def test_billing_handoff_skips_cancelled_orders(client, session, tmp_path):
+     lines = path.read_text(encoding="utf-8").splitlines()
+     assert lines[0] == "order_id,customer_name,country,currency,subtotal_minor,total_minor"
+     assert [line.split(",")[0] for line in lines[1:]] == [str(keep)]
++
++
++def test_list_orders_includes_lines(client):
++    place(client, [{"sku": "MUG-350", "quantity": 2}])
++    listed = client.get("/orders").json()
++    assert listed[-1]["lines"] == [{"sku": "MUG-350", "quantity": 2}]
++
++
++def test_list_orders_limit_zero_returns_all(client):
++    for _ in range(3):
++        place(client, [{"sku": "MUG-350", "quantity": 1}])
++    assert len(client.get("/orders", params={"limit": 0}).json()) >= 3

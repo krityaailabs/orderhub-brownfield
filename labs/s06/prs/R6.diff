@@ -1,0 +1,55 @@
+diff --git a/services/orders/orderhub/api.py b/services/orders/orderhub/api.py
+index de4ee65..6cf7863 100644
+--- a/services/orders/orderhub/api.py
++++ b/services/orders/orderhub/api.py
+@@ -64,6 +64,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
+         return orders.list_orders(session, status=status, limit=min(limit, 200))
+ 
++    @app.get("/reports/daily-sales")
++    def daily_sales(date: str, session=Depends(get_session)):
++        return orders.daily_sales(session, date)
++
+     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
+     def cancel_order(order_id: int, session=Depends(get_session),
+                      idempotency_key: str | None = Header(default=None)):
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 7afabb8..2cb0c79 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -4,7 +4,7 @@ import csv
+ from datetime import date, datetime, timedelta, timezone
+ from pathlib import Path
+ 
+-from sqlalchemy import select
++from sqlalchemy import select, text
+ from sqlalchemy.orm import Session
+ 
+ from . import pricing
+@@ -182,3 +182,11 @@ def write_billing_handoff(session: Session, business_date: date, out_dir: str) -
+             writer.writerow([order.id, order.customer.name, order.customer.country, order.currency,
+                              order.subtotal_minor, order.total_minor])
+     return path
++
++
++def daily_sales(session: Session, day: str) -> dict:
++    """Number of orders and total sales (minor units) for one calendar day, for the finance dashboard."""
++    row = session.execute(text(
++        f"SELECT COUNT(*), COALESCE(SUM(total_minor), 0) FROM orders WHERE date(created_at) = '{day}'"
++    )).one()
++    return {"date": day, "orders": row[0], "total_minor": row[1]}
+diff --git a/services/orders/tests/test_reports.py b/services/orders/tests/test_reports.py
+new file mode 100644
+index 0000000..81b4822
+--- /dev/null
++++ b/services/orders/tests/test_reports.py
+@@ -0,0 +1,9 @@
++from datetime import datetime, timezone
++
++
++def test_daily_sales_counts_todays_orders(client):
++    client.post("/orders", json={"customer_id": 1, "items": [{"sku": "MUG-350", "quantity": 2}]})
++    today = datetime.now(timezone.utc).date().isoformat()
++    report = client.get("/reports/daily-sales", params={"date": today}).json()
++    assert report["orders"] >= 1
++    assert report["total_minor"] > 0

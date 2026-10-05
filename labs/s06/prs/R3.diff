@@ -1,0 +1,1284 @@
+diff --git a/services/orders/orderhub/api.py b/services/orders/orderhub/api.py
+index de4ee65..0984748 100644
+--- a/services/orders/orderhub/api.py
++++ b/services/orders/orderhub/api.py
+@@ -33,12 +33,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+ 
+     def order_out(order) -> OrderOut:
+         return OrderOut(
+-            id=order.id, customer_id=order.customer_id, status=order.status, currency=order.currency,
+-            subtotal_minor=order.subtotal_minor, discount_code=order.discount_code,
++            id=order.id,
++            customer_id=order.customer_id,
++            status=order.status,
++            currency=order.currency,
++            subtotal_minor=order.subtotal_minor,
++            discount_code=order.discount_code,
+             total_minor=order.total_minor,
+             total_display=pricing.format_money(order.total_minor, order.currency),
+-            lines=[LineOut(product_id=line.product_id, quantity=line.quantity,
+-                           unit_price_minor=line.unit_price_minor) for line in order.lines],
++            lines=[
++                LineOut(product_id=line.product_id, quantity=line.quantity, unit_price_minor=line.unit_price_minor)
++                for line in order.lines
++            ],
+         )
+ 
+     @app.get("/health")
+@@ -52,8 +58,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+ 
+     @app.post("/orders", status_code=201, response_model=OrderOut)
+     def place_order(body: OrderIn, session=Depends(get_session)):
+-        order = orders.place_order(session, body.customer_id, [i.model_dump() for i in body.items],
+-                                   settings.currency, body.discount_code)
++        order = orders.place_order(
++            session, body.customer_id, [i.model_dump() for i in body.items], settings.currency, body.discount_code
++        )
+         return order_out(order)
+ 
+     @app.get("/orders/{order_id}", response_model=OrderOut)
+@@ -62,11 +69,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
+ 
+     @app.get("/orders")
+     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
+-        return orders.list_orders(session, status=status, limit=min(limit, 200))
++        return orders.list_orders(session, status=status, limit=min(limit, 2000))
+ 
+     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
+-    def cancel_order(order_id: int, session=Depends(get_session),
+-                     idempotency_key: str | None = Header(default=None)):
++    def cancel_order(order_id: int, session=Depends(get_session), idempotency_key: str | None = Header(default=None)):
+         if idempotency_key is None:
+             return order_out(orders.cancel_order(session, order_id))
+         fingerprint = idempotency.request_fingerprint("POST", f"/orders/{order_id}/cancel", None)
+diff --git a/services/orders/orderhub/idempotency.py b/services/orders/orderhub/idempotency.py
+index 61a5cf4..600ce92 100644
+--- a/services/orders/orderhub/idempotency.py
++++ b/services/orders/orderhub/idempotency.py
+@@ -49,6 +49,9 @@ def record(session: Session, key: str, fingerprint: str, status_code: int, body:
+     stored; for any other status, do nothing, so a client can retry after fixing the problem."""
+     if not 200 <= status_code < 300:
+         return
+-    session.add(IdempotencyRecord(key=key, fingerprint=fingerprint, status_code=status_code,
+-                                  response_json=json.dumps(body, sort_keys=True)))
++    session.add(
++        IdempotencyRecord(
++            key=key, fingerprint=fingerprint, status_code=status_code, response_json=json.dumps(body, sort_keys=True)
++        )
++    )
+     session.commit()
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 7afabb8..e0b0706 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -15,8 +15,9 @@ VALID_STATUSES = {"PLACED", "SHIPPED", "CANCELLED"}
+ RETURN_WINDOW = timedelta(days=30)
+ 
+ 
+-def place_order(session: Session, customer_id: int, items: list[dict], currency: str,
+-                discount_code: str | None = None) -> Order:
++def place_order(
++    session: Session, customer_id: int, items: list[dict], currency: str, discount_code: str | None = None
++) -> Order:
+     """items: [{"sku": str, "quantity": int}, ...]"""
+     if not items:
+         raise ValidationFailed("an order needs at least one item")
+@@ -47,8 +48,14 @@ def place_order(session: Session, customer_id: int, items: list[dict], currency:
+         total = pricing.apply_percentage_discount(sub, dc.percent)
+         code = dc.code
+ 
+-    order = Order(customer_id=customer.id, currency=currency, subtotal_minor=sub,
+-                  discount_code=code, total_minor=total, lines=lines)
++    order = Order(
++        customer_id=customer.id,
++        currency=currency,
++        subtotal_minor=sub,
++        discount_code=code,
++        total_minor=total,
++        lines=lines,
++    )
+     session.add(order)
+     session.commit()
+     return order
+@@ -68,13 +75,15 @@ def list_orders(session: Session, status: str | None = None, limit: int = 50) ->
+     result = []
+     for order in session.scalars(query.limit(limit)):
+         # Each access below loads lazily: one query for the customer and one for the lines, per order.
+-        result.append({
+-            "id": order.id,
+-            "customer_email": order.customer.email,
+-            "status": order.status,
+-            "total_minor": order.total_minor,
+-            "line_count": len(order.lines),
+-        })
++        result.append(
++            {
++                "id": order.id,
++                "customer_email": order.customer.email,
++                "status": order.status,
++                "total_minor": order.total_minor,
++                "line_count": len(order.lines),
++            }
++        )
+     return result
+ 
+ 
+@@ -146,15 +155,18 @@ def return_items(session: Session, order_id: int, items: list[dict], now: dateti
+     for sku, qty in requested.items():
+         line = by_sku[sku]
+         if qty > line.quantity - line.returned_quantity:
+-            raise ValidationFailed(f"cannot return {qty} x {sku}: only "
+-                                   f"{line.quantity - line.returned_quantity} left to return")
++            raise ValidationFailed(
++                f"cannot return {qty} x {sku}: only {line.quantity - line.returned_quantity} left to return"
++            )
+ 
+     remaining_after = sum(line.quantity - line.returned_quantity for line in order.lines) - sum(requested.values())
+     if remaining_after == 0:
+         refund = order.total_minor - order.refunded_minor
+     else:
+-        refund = sum(pricing.refund_for_units(by_sku[sku].unit_price_minor, qty, order.subtotal_minor,
+-                                              order.total_minor) for sku, qty in requested.items())
++        refund = sum(
++            pricing.refund_for_units(by_sku[sku].unit_price_minor, qty, order.subtotal_minor, order.total_minor)
++            for sku, qty in requested.items()
++        )
+ 
+     for sku, qty in requested.items():
+         line = by_sku[sku]
+@@ -173,12 +185,20 @@ def write_billing_handoff(session: Session, business_date: date, out_dir: str) -
+     path = Path(out_dir) / f"orders_{business_date:%Y%m%d}.csv"
+     path.parent.mkdir(parents=True, exist_ok=True)
+     rows = session.scalars(select(Order).where(Order.status != "CANCELLED").order_by(Order.id))
+-    with path.open("w", newline="", encoding="utf-8") as handle:
++    with path.open("w", newline="") as handle:
+         writer = csv.writer(handle)
+         writer.writerow(["order_id", "customer_name", "country", "currency", "subtotal_minor", "total_minor"])
+         for order in rows:
+             if order.created_at.date() != business_date:
+                 continue
+-            writer.writerow([order.id, order.customer.name, order.customer.country, order.currency,
+-                             order.subtotal_minor, order.total_minor])
++            writer.writerow(
++                [
++                    order.id,
++                    order.customer.name,
++                    order.customer.country,
++                    order.currency,
++                    order.subtotal_minor,
++                    order.total_minor,
++                ]
++            )
+     return path
+diff --git a/services/orders/tests/test_cancellation_acceptance.py b/services/orders/tests/test_cancellation_acceptance.py
+index 56ec98b..909d570 100644
+--- a/services/orders/tests/test_cancellation_acceptance.py
++++ b/services/orders/tests/test_cancellation_acceptance.py
+@@ -2,6 +2,9 @@
+ 
+ from datetime import datetime, timezone
+ 
++from fastapi.testclient import TestClient
++from sqlalchemy.orm import Session
++
+ from orderhub import orders
+ from orderhub.models import Order, Product
+ 
+@@ -10,7 +13,7 @@ def place(client, sku="BAG-TOTE", qty=5):
+     return client.post("/orders", json={"customer_id": 6, "items": [{"sku": sku, "quantity": qty}]}).json()
+ 
+ 
+-def test_ac1_cancelling_twice_restores_stock_once(client, session):
++def test_ac1_cancelling_twice_restores_stock_once(client: TestClient, session: Session) -> None:
+     order = place(client)
+     first = client.post(f"/orders/{order['id']}/cancel")
+     second = client.post(f"/orders/{order['id']}/cancel")
+@@ -20,7 +23,7 @@ def test_ac1_cancelling_twice_restores_stock_once(client, session):
+     assert session.get(Product, 5).stock == 220
+ 
+ 
+-def test_ac2_same_key_returns_the_same_response_and_runs_once(client, session):
++def test_ac2_same_key_returns_the_same_response_and_runs_once(client: TestClient, session: Session) -> None:
+     order = place(client)
+     headers = {"Idempotency-Key": "app-7f3a-cancel-1"}
+     first = client.post(f"/orders/{order['id']}/cancel", headers=headers)
+@@ -31,7 +34,7 @@ def test_ac2_same_key_returns_the_same_response_and_runs_once(client, session):
+     assert session.get(Product, 5).stock == 220
+ 
+ 
+-def test_ac3_key_reused_for_another_order_is_rejected(client, session):
++def test_ac3_key_reused_for_another_order_is_rejected(client: TestClient, session: Session) -> None:
+     a, b = place(client), place(client, sku="MUG-350", qty=1)
+     headers = {"Idempotency-Key": "app-reused-key"}
+     assert client.post(f"/orders/{a['id']}/cancel", headers=headers).status_code == 200
+@@ -42,7 +45,7 @@ def test_ac3_key_reused_for_another_order_is_rejected(client, session):
+     assert session.get(Order, b["id"]).status == "PLACED"
+ 
+ 
+-def test_ac4_shipped_order_conflicts_and_the_key_can_be_used_again(client, session):
++def test_ac4_shipped_order_conflicts_and_the_key_can_be_used_again(client: TestClient, session: Session) -> None:
+     order = place(client, sku="MUG-350", qty=1)
+     client.post(f"/orders/{order['id']}/ship")
+     headers = {"Idempotency-Key": "app-shipped-1"}
+@@ -52,7 +55,7 @@ def test_ac4_shipped_order_conflicts_and_the_key_can_be_used_again(client, sessi
+     assert client.post(f"/orders/{other['id']}/cancel", headers=headers).status_code == 200
+ 
+ 
+-def test_ac5_cancelled_orders_stay_out_of_the_handoff(client, session, tmp_path):
++def test_ac5_cancelled_orders_stay_out_of_the_handoff(client: TestClient, session: Session, tmp_path) -> None:
+     keep, drop = place(client, sku="MUG-350", qty=1), place(client, sku="MUG-350", qty=1)
+     client.post(f"/orders/{drop['id']}/cancel")
+     client.post(f"/orders/{drop['id']}/cancel")
+diff --git a/services/orders/tests/test_customers.py b/services/orders/tests/test_customers.py
+index 2ce64f6..094a5d8 100644
+--- a/services/orders/tests/test_customers.py
++++ b/services/orders/tests/test_customers.py
+@@ -1,14 +1,17 @@
+-def test_create_customer(client):
++from fastapi.testclient import TestClient
++
++
++def test_create_customer(client: TestClient) -> None:
+     r = client.post("/customers", json={"email": "new.person@example.com", "name": "New Person", "country": "de"})
+     assert r.status_code == 201
+     assert r.json()["country"] == "DE"
+ 
+ 
+-def test_duplicate_email_is_rejected(client):
++def test_duplicate_email_is_rejected(client: TestClient) -> None:
+     r = client.post("/customers", json={"email": "aiko.tanaka@example.com", "name": "Aiko T", "country": "JP"})
+     assert r.status_code == 409
+ 
+ 
+-def test_invalid_email_is_rejected(client):
++def test_invalid_email_is_rejected(client: TestClient) -> None:
+     r = client.post("/customers", json={"email": "not-an-email", "name": "X", "country": "GB"})
+     assert r.status_code == 422
+diff --git a/services/orders/tests/test_health.py b/services/orders/tests/test_health.py
+index 3526426..7f9132b 100644
+--- a/services/orders/tests/test_health.py
++++ b/services/orders/tests/test_health.py
+@@ -1,2 +1,5 @@
+-def test_health(client):
++from fastapi.testclient import TestClient
++
++
++def test_health(client: TestClient) -> None:
+     assert client.get("/health").json() == {"status": "ok"}
+diff --git a/services/orders/tests/test_idempotency.py b/services/orders/tests/test_idempotency.py
+index f2dcb3c..08e7f12 100644
+--- a/services/orders/tests/test_idempotency.py
++++ b/services/orders/tests/test_idempotency.py
+@@ -1,18 +1,19 @@
+ """Unit tests for orderhub/idempotency.py (Lab s05)."""
+ 
+ import pytest
++from sqlalchemy.orm import Session
+ 
+ from orderhub import idempotency
+ from orderhub.errors import ValidationFailed
+ 
+ 
+-def test_fingerprint_ignores_key_order_and_whitespace():
++def test_fingerprint_ignores_key_order_and_whitespace() -> None:
+     a = idempotency.request_fingerprint("post", "/orders/1/cancel", {"a": 1, "b": [1, 2]})
+     b = idempotency.request_fingerprint("POST", "/orders/1/cancel", {"b": [1, 2], "a": 1})
+     assert a == b and len(a) == 64
+ 
+ 
+-def test_fingerprint_differs_by_path_method_and_body():
++def test_fingerprint_differs_by_path_method_and_body() -> None:
+     base = idempotency.request_fingerprint("POST", "/orders/1/cancel", None)
+     assert base == idempotency.request_fingerprint("POST", "/orders/1/cancel", {})
+     assert base != idempotency.request_fingerprint("POST", "/orders/2/cancel", None)
+@@ -20,26 +21,26 @@ def test_fingerprint_differs_by_path_method_and_body():
+     assert base != idempotency.request_fingerprint("POST", "/orders/1/cancel", {"x": 1})
+ 
+ 
+-def test_lookup_of_new_key_is_none_then_returns_the_recorded_outcome(session):
++def test_lookup_of_new_key_is_none_then_returns_the_recorded_outcome(session: Session) -> None:
+     fp = idempotency.request_fingerprint("POST", "/x", None)
+     assert idempotency.lookup(session, "k1", fp) is None
+     idempotency.record(session, "k1", fp, 200, {"ok": True})
+     assert idempotency.lookup(session, "k1", fp) == (200, {"ok": True})
+ 
+ 
+-def test_failed_outcomes_are_not_recorded(session):
++def test_failed_outcomes_are_not_recorded(session: Session) -> None:
+     fp = idempotency.request_fingerprint("POST", "/x", None)
+     idempotency.record(session, "k2", fp, 409, {"error": "no"})
+     assert idempotency.lookup(session, "k2", fp) is None
+ 
+ 
+-def test_reused_key_with_different_fingerprint_is_rejected(session):
++def test_reused_key_with_different_fingerprint_is_rejected(session: Session) -> None:
+     idempotency.record(session, "k3", idempotency.request_fingerprint("POST", "/a", None), 200, {})
+     with pytest.raises(ValidationFailed, match="reused for a different request"):
+         idempotency.lookup(session, "k3", idempotency.request_fingerprint("POST", "/b", None))
+ 
+ 
+ @pytest.mark.parametrize("key,message", [("   ", "empty"), ("k" * 129, "too long")])
+-def test_bad_keys_are_rejected(session, key, message):
++def test_bad_keys_are_rejected(session: Session, key, message) -> None:
+     with pytest.raises(ValidationFailed, match=message):
+         idempotency.lookup(session, key, "f")
+diff --git a/services/orders/tests/test_orders.py b/services/orders/tests/test_orders.py
+index 7886b8e..7992825 100644
+--- a/services/orders/tests/test_orders.py
++++ b/services/orders/tests/test_orders.py
+@@ -1,5 +1,8 @@
+ from datetime import datetime, timezone
+ 
++from fastapi.testclient import TestClient
++from sqlalchemy.orm import Session
++
+ from orderhub import orders
+ from orderhub.models import Product
+ 
+@@ -11,7 +14,7 @@ def place(client, items, code=None, customer_id=1):
+     return client.post("/orders", json=body)
+ 
+ 
+-def test_place_order_computes_totals(client):
++def test_place_order_computes_totals(client: TestClient) -> None:
+     r = place(client, [{"sku": "PEN-GEL-BLK", "quantity": 4}, {"sku": "MUG-350", "quantity": 1}])
+     assert r.status_code == 201
+     body = r.json()
+@@ -20,54 +23,54 @@ def test_place_order_computes_totals(client):
+     assert body["total_display"] == "22.46 USD"
+ 
+ 
+-def test_place_order_with_discount_on_round_amount(client):
++def test_place_order_with_discount_on_round_amount(client: TestClient) -> None:
+     r = place(client, [{"sku": "STAND-LAP", "quantity": 2}], code="SAVE10")
+     assert r.status_code == 201
+     assert r.json()["total_minor"] == 8190
+ 
+ 
+-def test_sku_is_case_insensitive(client):
++def test_sku_is_case_insensitive(client: TestClient) -> None:
+     assert place(client, [{"sku": "mug-350", "quantity": 1}]).status_code == 201
+ 
+ 
+-def test_unknown_sku_is_rejected(client):
++def test_unknown_sku_is_rejected(client: TestClient) -> None:
+     assert place(client, [{"sku": "NOPE", "quantity": 1}]).status_code == 422
+ 
+ 
+-def test_inactive_product_is_rejected(client):
++def test_inactive_product_is_rejected(client: TestClient) -> None:
+     assert place(client, [{"sku": "HDPHN-WIRED", "quantity": 1}]).status_code == 422
+ 
+ 
+-def test_out_of_stock_is_rejected(client):
++def test_out_of_stock_is_rejected(client: TestClient) -> None:
+     assert place(client, [{"sku": "PLANNER-26", "quantity": 1}]).status_code == 409
+ 
+ 
+-def test_inactive_discount_code_is_rejected(client):
++def test_inactive_discount_code_is_rejected(client: TestClient) -> None:
+     assert place(client, [{"sku": "MUG-350", "quantity": 1}], code="SUMMER25").status_code == 422
+ 
+ 
+-def test_unknown_customer_is_rejected(client):
++def test_unknown_customer_is_rejected(client: TestClient) -> None:
+     assert place(client, [{"sku": "MUG-350", "quantity": 1}], customer_id=999).status_code == 404
+ 
+ 
+-def test_placing_an_order_reduces_stock(client, session):
++def test_placing_an_order_reduces_stock(client: TestClient, session: Session) -> None:
+     place(client, [{"sku": "DESK-LAMP", "quantity": 3}])
+     session.expire_all()
+     assert session.get(Product, 3).stock == 117
+ 
+ 
+-def test_get_order(client):
++def test_get_order(client: TestClient) -> None:
+     order_id = place(client, [{"sku": "MUG-350", "quantity": 2}]).json()["id"]
+     r = client.get(f"/orders/{order_id}")
+     assert r.status_code == 200
+     assert r.json()["lines"][0]["quantity"] == 2
+ 
+ 
+-def test_get_missing_order(client):
++def test_get_missing_order(client: TestClient) -> None:
+     assert client.get("/orders/12345").status_code == 404
+ 
+ 
+-def test_list_orders_filters_by_status(client):
++def test_list_orders_filters_by_status(client: TestClient) -> None:
+     a = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
+     place(client, [{"sku": "MUG-350", "quantity": 1}])
+     client.post(f"/orders/{a}/cancel")
+@@ -75,7 +78,7 @@ def test_list_orders_filters_by_status(client):
+     assert [o["id"] for o in cancelled] == [a]
+ 
+ 
+-def test_cancel_restores_stock(client, session):
++def test_cancel_restores_stock(client: TestClient, session: Session) -> None:
+     order_id = place(client, [{"sku": "BAG-TOTE", "quantity": 5}]).json()["id"]
+     r = client.post(f"/orders/{order_id}/cancel")
+     assert r.json()["status"] == "CANCELLED"
+@@ -83,7 +86,7 @@ def test_cancel_restores_stock(client, session):
+     assert session.get(Product, 5).stock == 220
+ 
+ 
+-def test_billing_handoff_skips_cancelled_orders(client, session, tmp_path):
++def test_billing_handoff_skips_cancelled_orders(client: TestClient, session: Session, tmp_path) -> None:
+     keep = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
+     drop = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
+     client.post(f"/orders/{drop}/cancel")
+diff --git a/services/orders/tests/test_pricing.py b/services/orders/tests/test_pricing.py
+index 3da1441..904cf2d 100644
+--- a/services/orders/tests/test_pricing.py
++++ b/services/orders/tests/test_pricing.py
+@@ -3,32 +3,32 @@ import pytest
+ from orderhub import pricing
+ 
+ 
+-def test_line_total_multiplies_price_by_quantity():
++def test_line_total_multiplies_price_by_quantity() -> None:
+     assert pricing.line_total(249, 4) == 996
+ 
+ 
+-def test_line_total_rejects_zero_quantity():
++def test_line_total_rejects_zero_quantity() -> None:
+     with pytest.raises(ValueError):
+         pricing.line_total(249, 0)
+ 
+ 
+-def test_subtotal_sums_lines():
++def test_subtotal_sums_lines() -> None:
+     assert pricing.subtotal([(1000, 2), (250, 3)]) == 2750
+ 
+ 
+-def test_discount_on_round_amount():
++def test_discount_on_round_amount() -> None:
+     assert pricing.apply_percentage_discount(2000, 10) == 1800
+ 
+ 
+-def test_zero_percent_discount_keeps_amount():
++def test_zero_percent_discount_keeps_amount() -> None:
+     assert pricing.apply_percentage_discount(1999, 0) == 1999
+ 
+ 
+-def test_discount_above_limit_is_rejected():
++def test_discount_above_limit_is_rejected() -> None:
+     with pytest.raises(ValueError):
+         pricing.apply_percentage_discount(1000, 95)
+ 
+ 
+ @pytest.mark.parametrize("minor,expected", [(1999, "19.99 USD"), (5, "0.05 USD"), (-250, "-2.50 USD")])
+-def test_format_money(minor, expected):
++def test_format_money(minor, expected) -> None:
+     assert pricing.format_money(minor, "USD") == expected
+diff --git a/services/orders/tests/test_pricing_characterisation.py b/services/orders/tests/test_pricing_characterisation.py
+index be55418..dc1ba77 100644
+--- a/services/orders/tests/test_pricing_characterisation.py
++++ b/services/orders/tests/test_pricing_characterisation.py
+@@ -20,7 +20,7 @@ def current() -> dict[str, int]:
+     return {f"{a}@{p}": pricing.apply_percentage_discount(a, p) for a in AMOUNTS for p in PERCENTS}
+ 
+ 
+-def test_discount_results_match_the_golden_master():
++def test_discount_results_match_the_golden_master() -> None:
+     if os.environ.get("UPDATE_GOLDEN") == "1":
+         GOLDEN.write_text(json.dumps(current(), indent=0, sort_keys=True) + "\n", encoding="utf-8")
+     expected = json.loads(GOLDEN.read_text(encoding="utf-8"))
+diff --git a/services/orders/tests/test_q0_q1_regressions.py b/services/orders/tests/test_q0_q1_regressions.py
+index 4c5b845..7953a6f 100644
+--- a/services/orders/tests/test_q0_q1_regressions.py
++++ b/services/orders/tests/test_q0_q1_regressions.py
+@@ -1,18 +1,21 @@
+ """Regression tests for issues Q0 and Q1, merged from Section 0."""
+ 
++from fastapi.testclient import TestClient
++
+ from orderhub import pricing
+ 
+ 
+-def test_q0_discount_rounds_half_up_on_the_discount():
++def test_q0_discount_rounds_half_up_on_the_discount() -> None:
+     assert pricing.apply_percentage_discount(1001, 10) == 901
+ 
+ 
+-def test_q0_reported_order_totals_901(client):
+-    r = client.post("/orders", json={"customer_id": 1, "items": [{"sku": "NB-A5", "quantity": 1}],
+-                                     "discount_code": "SAVE10"})
++def test_q0_reported_order_totals_901(client: TestClient) -> None:
++    r = client.post(
++        "/orders", json={"customer_id": 1, "items": [{"sku": "NB-A5", "quantity": 1}], "discount_code": "SAVE10"}
++    )
+     assert r.json()["total_minor"] == 901
+ 
+ 
+-def test_q1_email_check_ignores_case(client):
++def test_q1_email_check_ignores_case(client: TestClient) -> None:
+     r = client.post("/customers", json={"email": "Aiko.Tanaka@Example.com", "name": "Aiko", "country": "JP"})
+     assert r.status_code == 409
+diff --git a/services/orders/tests/test_returns_acceptance.py b/services/orders/tests/test_returns_acceptance.py
+index ebe5571..1f56a58 100644
+--- a/services/orders/tests/test_returns_acceptance.py
++++ b/services/orders/tests/test_returns_acceptance.py
+@@ -3,6 +3,9 @@ before the implementation. Do not edit these to make code pass; change the spec
+ 
+ from datetime import datetime, timedelta, timezone
+ 
++from fastapi.testclient import TestClient
++from sqlalchemy.orm import Session
++
+ from orderhub import orders
+ from orderhub.models import Order, Product
+ 
+@@ -20,30 +23,33 @@ def ret(client, order_id, items):
+     return client.post(f"/orders/{order_id}/returns", json={"items": items})
+ 
+ 
+-def test_ac1_return_one_unit_without_discount(client):
++def test_ac1_return_one_unit_without_discount(client: TestClient) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 2}])
+     r = ret(client, order["id"], [{"sku": "MUG-350", "quantity": 1}])
+     assert r.status_code == 201
+     assert r.json()["refund_minor"] == 1250
+ 
+ 
+-def test_ac2_discount_share_is_allocated_by_value(client):
++def test_ac2_discount_share_is_allocated_by_value(client: TestClient) -> None:
+     order = shipped_order(client, [{"sku": "STAND-LAP", "quantity": 2}], code="SAVE10")
+     assert (order["subtotal_minor"], order["total_minor"]) == (9100, 8190)
+     assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095
+ 
+ 
+-def test_ac3_refunds_sum_to_the_total_exactly(client):
+-    order = shipped_order(client, [{"sku": "PEN-GEL-BLK", "quantity": 2}, {"sku": "MUG-350", "quantity": 1}],
+-                          code="WELCOME15")
++def test_ac3_refunds_sum_to_the_total_exactly(client: TestClient) -> None:
++    order = shipped_order(
++        client, [{"sku": "PEN-GEL-BLK", "quantity": 2}, {"sku": "MUG-350", "quantity": 1}], code="WELCOME15"
++    )
+     assert order["total_minor"] == 1486
+-    refunds = [ret(client, order["id"], [{"sku": sku, "quantity": 1}]).json()["refund_minor"]
+-               for sku in ("PEN-GEL-BLK", "MUG-350", "PEN-GEL-BLK")]
++    refunds = [
++        ret(client, order["id"], [{"sku": sku, "quantity": 1}]).json()["refund_minor"]
++        for sku in ("PEN-GEL-BLK", "MUG-350", "PEN-GEL-BLK")
++    ]
+     assert refunds == [212, 1063, 211]
+     assert sum(refunds) == 1486
+ 
+ 
+-def test_ac4_return_window_closes_after_30_days(client, session):
++def test_ac4_return_window_closes_after_30_days(client: TestClient, session: Session) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 1}])
+     db_order = session.get(Order, order["id"])
+     db_order.created_at = datetime.now(timezone.utc) - timedelta(days=30, seconds=1)
+@@ -53,7 +59,7 @@ def test_ac4_return_window_closes_after_30_days(client, session):
+     assert "return window closed" in r.json()["error"]
+ 
+ 
+-def test_ac4_return_allowed_just_inside_the_window(client, session):
++def test_ac4_return_allowed_just_inside_the_window(client: TestClient, session: Session) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 1}])
+     db_order = session.get(Order, order["id"])
+     db_order.created_at = datetime.now(timezone.utc) - timedelta(days=29, hours=23)
+@@ -61,7 +67,7 @@ def test_ac4_return_allowed_just_inside_the_window(client, session):
+     assert ret(client, order["id"], [{"sku": "MUG-350", "quantity": 1}]).status_code == 201
+ 
+ 
+-def test_ac5_cannot_return_more_than_remains_and_nothing_changes(client, session):
++def test_ac5_cannot_return_more_than_remains_and_nothing_changes(client: TestClient, session: Session) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 2}])
+     assert ret(client, order["id"], [{"sku": "MUG-350", "quantity": 1}]).status_code == 201
+     session.expire_all()
+@@ -73,19 +79,19 @@ def test_ac5_cannot_return_more_than_remains_and_nothing_changes(client, session
+     assert session.get(Order, order["id"]).refunded_minor == 1250
+ 
+ 
+-def test_ac6_placed_and_cancelled_orders_cannot_be_returned(client):
++def test_ac6_placed_and_cancelled_orders_cannot_be_returned(client: TestClient) -> None:
+     placed = client.post("/orders", json={"customer_id": 3, "items": [{"sku": "MUG-350", "quantity": 1}]}).json()
+     assert ret(client, placed["id"], [{"sku": "MUG-350", "quantity": 1}]).status_code == 409
+     client.post(f"/orders/{placed['id']}/cancel")
+     assert ret(client, placed["id"], [{"sku": "MUG-350", "quantity": 1}]).status_code == 409
+ 
+ 
+-def test_ac6_only_placed_orders_can_be_shipped(client):
++def test_ac6_only_placed_orders_can_be_shipped(client: TestClient) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 1}])
+     assert client.post(f"/orders/{order['id']}/ship").status_code == 409
+ 
+ 
+-def test_ac7_returned_units_are_restocked(client, session):
++def test_ac7_returned_units_are_restocked(client: TestClient, session: Session) -> None:
+     order = shipped_order(client, [{"sku": "DESK-LAMP", "quantity": 2}])
+     session.expire_all()
+     before = session.get(Product, 3).stock
+@@ -94,7 +100,9 @@ def test_ac7_returned_units_are_restocked(client, session):
+     assert session.get(Product, 3).stock == before + 1
+ 
+ 
+-def test_ac8_billing_handoff_columns_are_unchanged_after_returns(client, session, tmp_path):
++def test_ac8_billing_handoff_columns_are_unchanged_after_returns(
++    client: TestClient, session: Session, tmp_path
++) -> None:
+     order = shipped_order(client, [{"sku": "MUG-350", "quantity": 2}])
+     ret(client, order["id"], [{"sku": "MUG-350", "quantity": 1}])
+     path = orders.write_billing_handoff(session, datetime.now(timezone.utc).date(), str(tmp_path))
+diff --git a/services/orders/tests/test_returns_edges.py b/services/orders/tests/test_returns_edges.py
+index 9fc80ae..75314be 100644
+--- a/services/orders/tests/test_returns_edges.py
++++ b/services/orders/tests/test_returns_edges.py
+@@ -4,21 +4,21 @@ acceptance and property tests let survive."""
+ from datetime import timedelta
+ 
+ import pytest
++from sqlalchemy.orm import Session
+ 
+ from orderhub import orders, pricing
+ from orderhub.errors import ValidationFailed
+ 
+ 
+-def test_discount_share_rounds_half_up_not_down():
++def test_discount_share_rounds_half_up_not_down() -> None:
+     # NB-A5 (1001) + PEN-GEL-BLK (249), STAFF30: discount 375, total 875.
+     # The pen's share is 375 * 249 / 1250 = 74.7, which rounds half-up to 75, so the refund is 174.
+     assert pricing.refund_for_units(249, 1, 1250, 875) == 174
+ 
+ 
+-def test_return_exactly_30_days_after_the_order_is_rejected(session):
++def test_return_exactly_30_days_after_the_order_is_rejected(session: Session) -> None:
+     order = orders.place_order(session, 1, [{"sku": "MUG-350", "quantity": 1}], "USD")
+     orders.ship_order(session, order.id)
+     created = order.created_at
+     with pytest.raises(ValidationFailed, match="return window closed"):
+-        orders.return_items(session, order.id, [{"sku": "MUG-350", "quantity": 1}],
+-                            now=created + timedelta(days=30))
++        orders.return_items(session, order.id, [{"sku": "MUG-350", "quantity": 1}], now=created + timedelta(days=30))
+diff --git a/services/orders/tests/test_returns_properties.py b/services/orders/tests/test_returns_properties.py
+index ddc4218..0cca1a9 100644
+--- a/services/orders/tests/test_returns_properties.py
++++ b/services/orders/tests/test_returns_properties.py
+@@ -10,8 +10,9 @@ from orderhub.db import Base, make_engine, make_session_factory
+ SKUS = ["NB-A5", "PEN-GEL-BLK", "DESK-LAMP", "MUG-350", "BAG-TOTE", "CABLE-USBC", "STAND-LAP"]
+ CODES = [None, "SAVE10", "WELCOME15", "STAFF30"]
+ 
+-lines_strategy = st.lists(st.tuples(st.sampled_from(SKUS), st.integers(1, 4)), min_size=1, max_size=4,
+-                          unique_by=lambda t: t[0])
++lines_strategy = st.lists(
++    st.tuples(st.sampled_from(SKUS), st.integers(1, 4)), min_size=1, max_size=4, unique_by=lambda t: t[0]
++)
+ 
+ 
+ def fresh_session():
+@@ -30,7 +31,7 @@ def place_and_ship(session, lines, code):
+ 
+ @settings(max_examples=60, deadline=None)
+ @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
+-def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data):
++def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data) -> None:
+     session = fresh_session()
+     order = place_and_ship(session, lines, code)
+     units = [sku for sku, qty in lines for _ in range(qty)]
+@@ -41,7 +42,7 @@ def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data):
+ 
+ @settings(max_examples=60, deadline=None)
+ @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
+-def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code, data):
++def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code, data) -> None:
+     session = fresh_session()
+     order = place_and_ship(session, lines, code)
+     units = [sku for sku, qty in lines for _ in range(qty)]
+@@ -55,6 +56,6 @@ def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code
+ 
+ 
+ @given(price=st.integers(1, 100_000), qty=st.integers(1, 20))
+-def test_without_a_discount_the_refund_is_the_full_value(price, qty):
++def test_without_a_discount_the_refund_is_the_full_value(price, qty) -> None:
+     subtotal = price * qty * 2
+     assert pricing.refund_for_units(price, qty, subtotal, subtotal) == price * qty
+diff --git a/tools/context_check.py b/tools/context_check.py
+index 7affbb4..060b536 100644
+--- a/tools/context_check.py
++++ b/tools/context_check.py
+@@ -22,8 +22,10 @@ SECRET_PATTERNS = [
+     ("private key block", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+     ("API key style token", re.compile(r"\bsk-[A-Za-z0-9_\-]{20,}")),
+     ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}")),
+-    ("assigned password or secret",
+-     re.compile(r"(?i)\b(password|passwd|secret|api_key|apikey)\s*[:=]\s*['\"]?[^\s'\"<>]{6,}")),
++    (
++        "assigned password or secret",
++        re.compile(r"(?i)\b(password|passwd|secret|api_key|apikey)\s*[:=]\s*['\"]?[^\s'\"<>]{6,}"),
++    ),
+ ]
+ COPILOT_SURFACES = ("github-chat", "cloud-agent", "code-review", "vscode", "cli")
+ 
+@@ -86,8 +88,9 @@ def _imports(root: Path, claude_file: Path) -> list[Path]:
+     return out
+ 
+ 
+-def claude_code_loads(root: Path, cwd: str = ".", opened: str | None = None,
+-                      mode: str = "claude-md-or-agents-md") -> list[str]:
++def claude_code_loads(
++    root: Path, cwd: str = ".", opened: str | None = None, mode: str = "claude-md-or-agents-md"
++) -> list[str]:
+     """Simulate which project instruction files Claude Code loads.
+ 
+     cwd: directory Claude Code was started in (relative to root).
+diff --git a/tools/doctor.py b/tools/doctor.py
+index 8cefbb5..1a20c07 100644
+--- a/tools/doctor.py
++++ b/tools/doctor.py
+@@ -32,11 +32,23 @@ def main() -> int:
+         found = importlib.util.find_spec(pkg) is not None
+         rows.append((f"package {pkg}", found, "installed" if found else "missing: run make setup", True))
+     jm = java_major()
+-    rows.append(("java >= 11 (javac)", jm is not None and jm >= 11 and shutil.which("javac") is not None,
+-                 f"java {jm}" if jm else "not found", True))
++    rows.append(
++        (
++            "java >= 11 (javac)",
++            jm is not None and jm >= 11 and shutil.which("javac") is not None,
++            f"java {jm}" if jm else "not found",
++            True,
++        )
++    )
+     rows.append(("git", shutil.which("git") is not None, shutil.which("git") or "not found", True))
+-    rows.append(("ruff (lint)", shutil.which("ruff") is not None or importlib.util.find_spec("ruff") is not None,
+-                 "found" if importlib.util.find_spec("ruff") else "optional", False))
++    rows.append(
++        (
++            "ruff (lint)",
++            shutil.which("ruff") is not None or importlib.util.find_spec("ruff") is not None,
++            "found" if importlib.util.find_spec("ruff") else "optional",
++            False,
++        )
++    )
+     failed = 0
+     for name, passed, detail, required in rows:
+         mark = "OK  " if passed else ("FAIL" if required else "WARN")
+diff --git a/tools/e2e_billing.py b/tools/e2e_billing.py
+index 5aa8d74..e9b7483 100644
+--- a/tools/e2e_billing.py
++++ b/tools/e2e_billing.py
+@@ -28,8 +28,16 @@ def main() -> int:
+         today = datetime.now(timezone.utc).date()
+         handoff = orders.write_billing_handoff(session, today, str(out / "handoff"))
+     print("handoff:", handoff.relative_to(ROOT))
+-    run = subprocess.run([str(ROOT / "legacy" / "billing" / "run_batch.sh"), str(out / "handoff"),
+-                          str(out / "billing"), today.isoformat()], capture_output=True, text=True)
++    run = subprocess.run(
++        [
++            str(ROOT / "legacy" / "billing" / "run_batch.sh"),
++            str(out / "handoff"),
++            str(out / "billing"),
++            today.isoformat(),
++        ],
++        capture_output=True,
++        text=True,
++    )
+     print(run.stdout.strip())
+     if run.returncode != 0:
+         print(run.stderr)
+diff --git a/tools/hooks/agent_after_edit.py b/tools/hooks/agent_after_edit.py
+index 76441a7..4693ae8 100644
+--- a/tools/hooks/agent_after_edit.py
++++ b/tools/hooks/agent_after_edit.py
+@@ -32,8 +32,13 @@ def main() -> int:
+     rel = edited_path(payload)
+     if not rel:
+         return 0
+-    result = subprocess.run([sys.executable, str(ROOT / "tools" / "precommit.py"), rel], cwd=ROOT,
+-                            capture_output=True, text=True, check=False)
++    result = subprocess.run(
++        [sys.executable, str(ROOT / "tools" / "precommit.py"), rel],
++        cwd=ROOT,
++        capture_output=True,
++        text=True,
++        check=False,
++    )
+     if result.returncode != 0:
+         print(f"Checks failed after editing {rel}:\n{result.stdout}{result.stderr}", file=sys.stderr)
+         return 2
+diff --git a/tools/mutate.py b/tools/mutate.py
+index 8444ca4..3b0cee9 100644
+--- a/tools/mutate.py
++++ b/tools/mutate.py
+@@ -24,37 +24,58 @@ SERVICE = ROOT / "services" / "orders"
+ @dataclass(frozen=True)
+ class Mutant:
+     name: str
+-    path: str      # relative to services/orders
++    path: str  # relative to services/orders
+     old: str
+     new: str
+ 
+ 
+ MUTANTS = [
+-    Mutant("rounding: half-up becomes floor", "orderhub/pricing.py",
+-           "share = (2 * discount * value + subtotal_minor) // (2 * subtotal_minor)",
+-           "share = (2 * discount * value) // (2 * subtotal_minor)"),
++    Mutant(
++        "rounding: half-up becomes floor",
++        "orderhub/pricing.py",
++        "share = (2 * discount * value + subtotal_minor) // (2 * subtotal_minor)",
++        "share = (2 * discount * value) // (2 * subtotal_minor)",
++    ),
+     Mutant("discount share ignored", "orderhub/pricing.py", "return value - share", "return value"),
+-    Mutant("value ignores quantity", "orderhub/pricing.py",
+-           "    value = unit_price_minor * quantity\n    discount =", "    value = unit_price_minor\n    discount ="),
+-    Mutant("partial refund uses the whole order's discount", "orderhub/pricing.py",
+-           "    discount = subtotal_minor - total_minor\n    share",
+-           "    discount = subtotal_minor - total_minor\n    value = max(value, subtotal_minor)\n    share"),
++    Mutant(
++        "value ignores quantity",
++        "orderhub/pricing.py",
++        "    value = unit_price_minor * quantity\n    discount =",
++        "    value = unit_price_minor\n    discount =",
++    ),
++    Mutant(
++        "partial refund uses the whole order's discount",
++        "orderhub/pricing.py",
++        "    discount = subtotal_minor - total_minor\n    share",
++        "    discount = subtotal_minor - total_minor\n    value = max(value, subtotal_minor)\n    share",
++    ),
+     Mutant("remainder rule removed", "orderhub/orders.py", "if remaining_after == 0:", "if remaining_after < 0:"),
+-    Mutant("window boundary: >= becomes >", "orderhub/orders.py",
+-           "if now >= _as_utc(order.created_at) + RETURN_WINDOW:",
+-           "if now > _as_utc(order.created_at) + RETURN_WINDOW:"),
++    Mutant(
++        "window boundary: >= becomes >",
++        "orderhub/orders.py",
++        "if now >= _as_utc(order.created_at) + RETURN_WINDOW:",
++        "if now > _as_utc(order.created_at) + RETURN_WINDOW:",
++    ),
+     Mutant("restock removed", "orderhub/orders.py", "line.product.stock += qty", "line.product.stock += 0"),
+-    Mutant("status check accepts PLACED", "orderhub/orders.py",
+-           'if order.status != "SHIPPED":\n        raise Conflict(f"only SHIPPED',
+-           'if order.status == "CANCELLED":\n        raise Conflict(f"only SHIPPED'),
++    Mutant(
++        "status check accepts PLACED",
++        "orderhub/orders.py",
++        'if order.status != "SHIPPED":\n        raise Conflict(f"only SHIPPED',
++        'if order.status == "CANCELLED":\n        raise Conflict(f"only SHIPPED',
++    ),
+ ]
+ 
+ DEFAULT_TESTS = sorted(str(p.relative_to(SERVICE)) for p in (SERVICE / "tests").glob("test_returns_*.py"))
+ 
+ 
+ def run_tests(tests: list[str]) -> bool:
+-    result = subprocess.run([sys.executable, "-m", "pytest", "-x", "-q", "-p", "no:cacheprovider", *tests],
+-                            cwd=SERVICE, capture_output=True, text=True, check=False)
++    result = subprocess.run(
++        [sys.executable, "-m", "pytest", "-x", "-q", "-p", "no:cacheprovider", *tests],
++        cwd=SERVICE,
++        capture_output=True,
++        text=True,
++        check=False,
++    )
+     return result.returncode == 0
+ 
+ 
+@@ -83,8 +104,11 @@ def main(argv: list[str] | None = None) -> int:
+             survived.append(m.name)
+     total = len(MUTANTS) - len(skipped)
+     killed_count = total - len(survived)
+-    print(f"\n{killed_count} of {total} mutants killed ({100 * killed_count // max(total, 1)}%)"
+-          + (f"; {len(skipped)} skipped" if skipped else "") + ".")
++    print(
++        f"\n{killed_count} of {total} mutants killed ({100 * killed_count // max(total, 1)}%)"
++        + (f"; {len(skipped)} skipped" if skipped else "")
++        + "."
++    )
+     return 1 if survived or skipped else 0
+ 
+ 
+diff --git a/tools/precommit.py b/tools/precommit.py
+index 0347ee7..87be882 100644
+--- a/tools/precommit.py
++++ b/tools/precommit.py
+@@ -16,8 +16,17 @@ PY = sys.executable
+ 
+ CHECKS = {
+     "lint": [PY, "-m", "ruff", "check", "services/orders", "tools"],
+-    "python-tests": [PY, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "services/orders/tests",
+-                     "--ignore=services/orders/tests/test_returns_properties.py"],
++    "python-tests": [
++        PY,
++        "-m",
++        "pytest",
++        "-q",
++        "-x",
++        "-p",
++        "no:cacheprovider",
++        "services/orders/tests",
++        "--ignore=services/orders/tests/test_returns_properties.py",
++    ],
+     "tool-tests": [PY, "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider", "tools/tests"],
+     "java": ["legacy/billing/build.sh"],
+     "billing-demo": [PY, "tools/e2e_billing.py"],
+@@ -64,8 +73,13 @@ def select_checks(paths: list[str]) -> list[str]:
+ 
+ 
+ def staged_files() -> list[str]:
+-    out = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], cwd=ROOT,
+-                         capture_output=True, text=True, check=False).stdout
++    out = subprocess.run(
++        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
++        cwd=ROOT,
++        capture_output=True,
++        text=True,
++        check=False,
++    ).stdout
+     return [line for line in out.splitlines() if line]
+ 
+ 
+diff --git a/tools/spec_check.py b/tools/spec_check.py
+index 4461392..7bf1eae 100644
+--- a/tools/spec_check.py
++++ b/tools/spec_check.py
+@@ -110,13 +110,15 @@ def parse_slices(plan_text: str) -> list[dict]:
+         dep_list = []
+         if deps and deps.group(1).strip().lower() != "none":
+             dep_list = re.findall(r"S\d+", deps.group(1))
+-        slices.append({
+-            "id": m.group(1),
+-            "title": m.group(2).strip(),
+-            "criteria": re.findall(r"AC-\d+", crit.group(1)) if crit else [],
+-            "size": int(size.group(1)) if size else None,
+-            "depends": dep_list,
+-        })
++        slices.append(
++            {
++                "id": m.group(1),
++                "title": m.group(2).strip(),
++                "criteria": re.findall(r"AC-\d+", crit.group(1)) if crit else [],
++                "size": int(size.group(1)) if size else None,
++                "depends": dep_list,
++            }
++        )
+     return slices
+ 
+ 
+@@ -173,9 +175,12 @@ def main(argv: list[str] | None = None) -> int:
+     if argv:
+         pairs = [(Path(argv[0]), Path(argv[1]))]
+     else:
+-        specs = sorted(p for p in (root / "docs" / "specs").glob("*.md")
+-                       if not p.name.endswith((".plan.md", ".progress.md"))
+-                       and p.name not in ("template.md", "README.md", "progress-template.md"))
++        specs = sorted(
++            p
++            for p in (root / "docs" / "specs").glob("*.md")
++            if not p.name.endswith((".plan.md", ".progress.md"))
++            and p.name not in ("template.md", "README.md", "progress-template.md")
++        )
+         pairs = [(p, p.with_name(p.stem + ".plan.md")) for p in specs]
+     if not pairs:
+         print("No specs found in docs/specs.")
+diff --git a/tools/task_scorecard.py b/tools/task_scorecard.py
+index 7fc5928..ee8d812 100644
+--- a/tools/task_scorecard.py
++++ b/tools/task_scorecard.py
+@@ -30,8 +30,7 @@ class Recommendation:
+ 
+ 
+ def score(spec: int, verify: int, blast: int, context: int, review: int, novelty: int) -> Recommendation:
+-    values = {"spec": spec, "verify": verify, "blast": blast, "context": context, "review": review,
+-              "novelty": novelty}
++    values = {"spec": spec, "verify": verify, "blast": blast, "context": context, "review": review, "novelty": novelty}
+     for name, value in values.items():
+         if value not in (0, 1, 2):
+             raise ValueError(f"{name} must be 0, 1 or 2, got {value!r}")
+diff --git a/tools/tests/test_context_check.py b/tools/tests/test_context_check.py
+index 3481711..20ff9e1 100644
+--- a/tools/tests/test_context_check.py
++++ b/tools/tests/test_context_check.py
+@@ -20,21 +20,36 @@ def make_repo(tmp_path: Path, files: dict[str, str]) -> Path:
+ 
+ # find_instruction_files
+ 
++
+ def test_finds_every_kind_of_instruction_file(tmp_path):
+-    root = make_repo(tmp_path, {
+-        "AGENTS.md": "x", "legacy/billing/AGENTS.md": "x", "CLAUDE.md": "x", "sub/CLAUDE.local.md": "x",
+-        ".github/copilot-instructions.md": "x", ".github/instructions/py.instructions.md": "x",
+-        ".cursor/rules/style.mdc": "x", "README.md": "not an instruction file",
+-        ".venv/lib/AGENTS.md": "ignored: inside .venv",
+-    })
++    root = make_repo(
++        tmp_path,
++        {
++            "AGENTS.md": "x",
++            "legacy/billing/AGENTS.md": "x",
++            "CLAUDE.md": "x",
++            "sub/CLAUDE.local.md": "x",
++            ".github/copilot-instructions.md": "x",
++            ".github/instructions/py.instructions.md": "x",
++            ".cursor/rules/style.mdc": "x",
++            "README.md": "not an instruction file",
++            ".venv/lib/AGENTS.md": "ignored: inside .venv",
++        },
++    )
+     assert cc.find_instruction_files(root) == [
+-        ".cursor/rules/style.mdc", ".github/copilot-instructions.md", ".github/instructions/py.instructions.md",
+-        "AGENTS.md", "CLAUDE.md", "legacy/billing/AGENTS.md", "sub/CLAUDE.local.md",
++        ".cursor/rules/style.mdc",
++        ".github/copilot-instructions.md",
++        ".github/instructions/py.instructions.md",
++        "AGENTS.md",
++        "CLAUDE.md",
++        "legacy/billing/AGENTS.md",
++        "sub/CLAUDE.local.md",
+     ]
+ 
+ 
+ # claude_code_loads
+ 
++
+ def test_claude_reads_agents_md_when_there_is_no_claude_md(tmp_path):
+     root = make_repo(tmp_path, {"AGENTS.md": "root"})
+     assert cc.claude_code_loads(root) == ["AGENTS.md"]
+@@ -61,24 +76,34 @@ def test_import_inside_backticks_is_not_an_import(tmp_path):
+ 
+ 
+ def test_nested_agents_md_loads_when_a_file_there_is_opened(tmp_path):
+-    root = make_repo(tmp_path, {"AGENTS.md": "root", "legacy/billing/AGENTS.md": "billing",
+-                                "legacy/billing/src/X.java": "class X {}"})
++    root = make_repo(
++        tmp_path,
++        {"AGENTS.md": "root", "legacy/billing/AGENTS.md": "billing", "legacy/billing/src/X.java": "class X {}"},
++    )
+     assert cc.claude_code_loads(root) == ["AGENTS.md"]
+-    assert cc.claude_code_loads(root, opened="legacy/billing/src/X.java") == ["AGENTS.md",
+-                                                                              "legacy/billing/AGENTS.md"]
++    assert cc.claude_code_loads(root, opened="legacy/billing/src/X.java") == ["AGENTS.md", "legacy/billing/AGENTS.md"]
+ 
+ 
+ def test_root_claude_md_also_stops_nested_agents_md(tmp_path):
+-    root = make_repo(tmp_path, {"AGENTS.md": "root", "CLAUDE.md": "@AGENTS.md\n",
+-                                "legacy/billing/AGENTS.md": "billing", "legacy/billing/X.java": ""})
++    root = make_repo(
++        tmp_path,
++        {
++            "AGENTS.md": "root",
++            "CLAUDE.md": "@AGENTS.md\n",
++            "legacy/billing/AGENTS.md": "billing",
++            "legacy/billing/X.java": "",
++        },
++    )
+     assert cc.claude_code_loads(root, opened="legacy/billing/X.java") == ["CLAUDE.md", "AGENTS.md"]
+ 
+ 
+ def test_both_mode_reads_claude_md_then_agents_md(tmp_path):
+-    root = make_repo(tmp_path, {"AGENTS.md": "a", "CLAUDE.local.md": "b", "legacy/AGENTS.md": "c",
+-                                "legacy/X.java": ""})
++    root = make_repo(tmp_path, {"AGENTS.md": "a", "CLAUDE.local.md": "b", "legacy/AGENTS.md": "c", "legacy/X.java": ""})
+     assert cc.claude_code_loads(root, opened="legacy/X.java", mode="claude-md-and-agents-md") == [
+-        "CLAUDE.local.md", "AGENTS.md", "legacy/AGENTS.md"]
++        "CLAUDE.local.md",
++        "AGENTS.md",
++        "legacy/AGENTS.md",
++    ]
+ 
+ 
+ def test_claude_md_only_mode_never_reads_agents_md(tmp_path):
+@@ -93,20 +118,30 @@ def test_unknown_mode_is_rejected(tmp_path):
+ 
+ # copilot_loads
+ 
++
+ def test_github_chat_reads_only_copilot_instructions(tmp_path):
+     root = make_repo(tmp_path, {"AGENTS.md": "a", ".github/copilot-instructions.md": "c", "CLAUDE.md": "x"})
+     assert cc.copilot_loads(root, "github-chat") == [".github/copilot-instructions.md"]
+ 
+ 
+ def test_cloud_agent_reads_instructions_agents_and_claude_md(tmp_path):
+-    root = make_repo(tmp_path, {
+-        "AGENTS.md": "a", ".github/copilot-instructions.md": "c", "CLAUDE.md": "x",
+-        ".github/instructions/java.instructions.md": "---\napplyTo: 'legacy/**/*.java'\n---\nJava rules",
+-        "legacy/AGENTS.md": "legacy",
+-    })
++    root = make_repo(
++        tmp_path,
++        {
++            "AGENTS.md": "a",
++            ".github/copilot-instructions.md": "c",
++            "CLAUDE.md": "x",
++            ".github/instructions/java.instructions.md": "---\napplyTo: 'legacy/**/*.java'\n---\nJava rules",
++            "legacy/AGENTS.md": "legacy",
++        },
++    )
+     assert cc.copilot_loads(root, "cloud-agent", "legacy/src/X.java") == [
+-        ".github/copilot-instructions.md", ".github/instructions/java.instructions.md", "AGENTS.md",
+-        "legacy/AGENTS.md", "CLAUDE.md"]
++        ".github/copilot-instructions.md",
++        ".github/instructions/java.instructions.md",
++        "AGENTS.md",
++        "legacy/AGENTS.md",
++        "CLAUDE.md",
++    ]
+ 
+ 
+ def test_vscode_does_not_read_claude_md(tmp_path):
+@@ -121,19 +156,30 @@ def test_unknown_copilot_surface_is_rejected(tmp_path):
+ 
+ # cursor_loads
+ 
++
+ def test_cursor_applies_always_rules_glob_rules_and_nested_agents(tmp_path):
+-    root = make_repo(tmp_path, {
+-        ".cursor/rules/always.mdc": "---\nalwaysApply: true\n---\nalways",
+-        ".cursor/rules/java.mdc": "---\nglobs: legacy/**/*.java\nalwaysApply: false\n---\njava",
+-        ".cursor/rules/web.mdc": "---\nglobs: web/**\n---\nweb",
+-        "AGENTS.md": "a", "legacy/AGENTS.md": "l", "CLAUDE.md": "not read by Cursor",
+-    })
+-    assert cc.cursor_loads(root, "legacy/src/X.java") == [".cursor/rules/always.mdc", ".cursor/rules/java.mdc",
+-                                                          "AGENTS.md", "legacy/AGENTS.md"]
++    root = make_repo(
++        tmp_path,
++        {
++            ".cursor/rules/always.mdc": "---\nalwaysApply: true\n---\nalways",
++            ".cursor/rules/java.mdc": "---\nglobs: legacy/**/*.java\nalwaysApply: false\n---\njava",
++            ".cursor/rules/web.mdc": "---\nglobs: web/**\n---\nweb",
++            "AGENTS.md": "a",
++            "legacy/AGENTS.md": "l",
++            "CLAUDE.md": "not read by Cursor",
++        },
++    )
++    assert cc.cursor_loads(root, "legacy/src/X.java") == [
++        ".cursor/rules/always.mdc",
++        ".cursor/rules/java.mdc",
++        "AGENTS.md",
++        "legacy/AGENTS.md",
++    ]
+ 
+ 
+ # content checks
+ 
++
+ def test_required_sections():
+     assert cc.check_required_sections("# T\n## Commands\n## Boundaries and limits\n") == ["Conventions"]
+     assert cc.check_required_sections("## commands\n## Conventions\n## Boundaries\n") == []
+@@ -145,12 +191,15 @@ def test_check_commands_reports_only_missing_backticked_targets():
+     assert cc.check_commands(text, makefile) == ["deploy"]
+ 
+ 
+-@pytest.mark.parametrize("line", [
+-    "AWS key AKIAABCDEFGHIJKLMNOP",
+-    "-----BEGIN RSA PRIVATE KEY-----",
+-    "token sk-abcdefghijklmnopqrstuvwxyz123456",
+-    "password = hunter22hunter",
+-])
++@pytest.mark.parametrize(
++    "line",
++    [
++        "AWS key AKIAABCDEFGHIJKLMNOP",
++        "-----BEGIN RSA PRIVATE KEY-----",
++        "token sk-abcdefghijklmnopqrstuvwxyz123456",
++        "password = hunter22hunter",
++    ],
++)
+ def test_secret_patterns_are_found(line):
+     findings = cc.check_no_secrets("fine line\n" + line)
+     assert len(findings) == 1 and findings[0].startswith("line 2: ")
+diff --git a/tools/tests/test_precommit.py b/tools/tests/test_precommit.py
+index 06ed0a2..f79daaf 100644
+--- a/tools/tests/test_precommit.py
++++ b/tools/tests/test_precommit.py
+@@ -19,10 +19,12 @@ def test_test_file_change_runs_the_guard():
+ 
+ 
+ def test_legacy_java_change():
+-    assert select_checks(["legacy/billing/src/com/orderhub/billing/InvoiceCalculator.java"]) == [
+-        "java", "billing-demo"]
++    assert select_checks(["legacy/billing/src/com/orderhub/billing/InvoiceCalculator.java"]) == ["java", "billing-demo"]
+     assert select_checks(["legacy/billing/test/com/orderhub/billing/BillingSelfTest.java"]) == [
+-        "java", "billing-demo", "protect-tests"]
++        "java",
++        "billing-demo",
++        "protect-tests",
++    ]
+ 
+ 
+ def test_context_and_spec_files():
+@@ -34,7 +36,10 @@ def test_context_and_spec_files():
+ 
+ def test_tools_change_runs_tool_tests_and_lint():
+     assert select_checks(["tools/mutate.py", "tools/tests/test_precommit.py"]) == [
+-        "lint", "tool-tests", "protect-tests"]
++        "lint",
++        "tool-tests",
++        "protect-tests",
++    ]
+ 
+ 
+ def test_unrelated_files_need_nothing_and_order_is_stable():
+diff --git a/tools/tests/test_protect_tests.py b/tools/tests/test_protect_tests.py
+index 01c1f75..5226c36 100644
+--- a/tools/tests/test_protect_tests.py
++++ b/tools/tests/test_protect_tests.py
+@@ -32,8 +32,10 @@ ADDITION_ONLY = """--- a/tools/tests/test_x.py
+ 
+ def test_changed_assertion_is_reported():
+     assert find_test_edits(TAMPERED) == [
+-        ("services/orders/tests/test_returns_acceptance.py",
+-         '    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095'),
++        (
++            "services/orders/tests/test_returns_acceptance.py",
++            '    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095',
++        ),
+     ]
+ 
+ 
+@@ -43,12 +45,15 @@ def test_new_test_files_and_pure_additions_are_fine():
+ 
+ 
+ def test_deleted_test_lines_are_reported_and_blank_lines_ignored():
+-    diff = ("--- a/legacy/billing/test/X.java\n+++ b/legacy/billing/test/X.java\n"
+-            "@@ -3,2 +2,0 @@\n-        check(a);\n-\n")
++    diff = (
++        "--- a/legacy/billing/test/X.java\n+++ b/legacy/billing/test/X.java\n@@ -3,2 +2,0 @@\n-        check(a);\n-\n"
++    )
+     assert find_test_edits(diff) == [("legacy/billing/test/X.java", "        check(a);")]
+ 
+ 
+ def test_several_files_keep_their_own_names():
+     diff = TAMPERED + "--- a/tools/tests/test_y.py\n+++ b/tools/tests/test_y.py\n@@ -1 +0,0 @@\n-assert 2\n"
+-    assert [f for f, _ in find_test_edits(diff)] == ["services/orders/tests/test_returns_acceptance.py",
+-                                                      "tools/tests/test_y.py"]
++    assert [f for f, _ in find_test_edits(diff)] == [
++        "services/orders/tests/test_returns_acceptance.py",
++        "tools/tests/test_y.py",
++    ]
+diff --git a/tools/tests/test_spec_check.py b/tools/tests/test_spec_check.py
+index b4e695b..31b37da 100644
+--- a/tools/tests/test_spec_check.py
++++ b/tools/tests/test_spec_check.py
+@@ -70,8 +70,9 @@ def test_criteria_ids_must_be_sequential():
+ def test_criterion_needs_given_when_then_in_order():
+     text = GOOD.replace("Given a basket, when I pay, then I get a receipt.", "It should work when I pay.")
+     assert "AC-1: needs Given, When and Then in that order" in sc.check_spec(text)
+-    text = GOOD.replace("Given a basket, when I pay, then I get a receipt.",
+-                        "Then a receipt, given a basket, when paid.")
++    text = GOOD.replace(
++        "Given a basket, when I pay, then I get a receipt.", "Then a receipt, given a basket, when paid."
++    )
+     assert "AC-1: needs Given, When and Then in that order" in sc.check_spec(text)
+ 
+ 
+diff --git a/tools/tests/test_task_scorecard.py b/tools/tests/test_task_scorecard.py
+index afff2ae..2ade897 100644
+--- a/tools/tests/test_task_scorecard.py
++++ b/tools/tests/test_task_scorecard.py
+@@ -46,6 +46,7 @@ def test_rejects_values_outside_0_to_2(bad):
+ 
+ 
+ def test_cli_prints_recommendation(capsys):
+-    assert main(["--spec", "2", "--verify", "2", "--blast", "1", "--context", "2", "--review", "2",
+-                 "--novelty", "1"]) == 0
++    assert (
++        main(["--spec", "2", "--verify", "2", "--blast", "1", "--context", "2", "--review", "2", "--novelty", "1"]) == 0
++    )
+     assert "total 10/12 -> agent (autonomy L2-L3)" in capsys.readouterr().out

@@ -3,11 +3,11 @@
 from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
-from . import customers, idempotency, orders, pricing
+from . import customers, idempotency, notify, orders, pricing
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .errors import OrderHubError
-from .schemas import CustomerIn, CustomerOut, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
+from .schemas import CustomerIn, CustomerOut, CustomerPatch, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -50,6 +50,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         c = customers.create_customer(session, body.email, body.name, body.country)
         return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
 
+    @app.patch("/customers/{customer_id}", response_model=CustomerOut)
+    def update_customer(customer_id: int, body: CustomerPatch, session=Depends(get_session)):
+        c = customers.update_customer(session, customer_id, name=body.name, email=body.email)
+        return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
+
     @app.post("/orders", status_code=201, response_model=OrderOut)
     def place_order(body: OrderIn, session=Depends(get_session)):
         order = orders.place_order(session, body.customer_id, [i.model_dump() for i in body.items],
@@ -62,19 +67,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/orders")
     def list_orders(status: str | None = None, limit: int = 50, session=Depends(get_session)):
-        return orders.list_orders(session, status=status, limit=min(limit, 200))
+        return orders.list_orders(session, status=status, limit=limit)
+
+    def notify_warehouse(body: dict) -> None:
+        if settings.warehouse_webhook_url:
+            lines = [{"product_id": line["product_id"], "quantity": line["quantity"]} for line in body["lines"]]
+            notify.order_cancelled(settings.warehouse_webhook_url, body["id"], lines)
 
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
     def cancel_order(order_id: int, session=Depends(get_session),
                      idempotency_key: str | None = Header(default=None)):
         if idempotency_key is None:
-            return order_out(orders.cancel_order(session, order_id))
+            body = order_out(orders.cancel_order(session, order_id)).model_dump()
+            notify_warehouse(body)
+            return body
         fingerprint = idempotency.request_fingerprint("POST", f"/orders/{order_id}/cancel", None)
         stored = idempotency.lookup(session, idempotency_key, fingerprint)
         if stored is not None:
             return JSONResponse(status_code=stored[0], content=stored[1])
         body = order_out(orders.cancel_order(session, order_id)).model_dump()
         idempotency.record(session, idempotency_key, fingerprint, 200, body)
+        notify_warehouse(body)
         return body
 
     @app.post("/orders/{order_id}/ship", response_model=OrderOut)
