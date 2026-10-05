@@ -35,3 +35,17 @@ def format_money(amount_minor: int, currency: str) -> str:
     sign = "-" if amount_minor < 0 else ""
     amount_minor = abs(amount_minor)
     return f"{sign}{amount_minor // 100}.{amount_minor % 100:02d} {currency}"
+
+
+def refund_for_units(unit_price_minor: int, quantity: int, subtotal_minor: int, total_minor: int) -> int:
+    """Refund for returning `quantity` units of a line, before the remainder rule.
+
+    The order-level discount (subtotal - total) is shared across lines in proportion to their value.
+    The returned units' share is rounded half-up to the minor unit and subtracted from their value:
+        value = unit_price_minor * quantity
+        share = round_half_up(discount * value / subtotal)
+        refund = value - share
+    Spec: docs/specs/returns.md, AC-2. The final return of an order uses the remainder rule instead
+    (see orders.return_items, AC-3).
+    """
+    raise NotImplementedError("Lab s04: implement refund_for_units")

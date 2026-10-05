@@ -57,6 +57,7 @@ class Order(Base):
     subtotal_minor: Mapped[int]
     discount_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     total_minor: Mapped[int]
+    refunded_minor: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     customer: Mapped[Customer] = relationship(back_populates="orders")
@@ -71,6 +72,7 @@ class OrderLine(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[int]
     unit_price_minor: Mapped[int]
+    returned_quantity: Mapped[int] = mapped_column(default=0)
 
     order: Mapped[Order] = relationship(back_populates="lines")
     product: Mapped[Product] = relationship()

@@ -7,7 +7,7 @@ from . import customers, orders, pricing
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .errors import OrderHubError
-from .schemas import CustomerIn, CustomerOut, LineOut, OrderIn, OrderOut
+from .schemas import CustomerIn, CustomerOut, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -67,6 +67,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
     def cancel_order(order_id: int, session=Depends(get_session)):
         return order_out(orders.cancel_order(session, order_id))
+
+    @app.post("/orders/{order_id}/ship", response_model=OrderOut)
+    def ship_order(order_id: int, session=Depends(get_session)):
+        return order_out(orders.ship_order(session, order_id))
+
+    @app.post("/orders/{order_id}/returns", status_code=201, response_model=ReturnOut)
+    def return_items(order_id: int, body: ReturnIn, session=Depends(get_session)):
+        refund = orders.return_items(session, order_id, [i.model_dump() for i in body.items])
+        order = orders.get_order(session, order_id)
+        return ReturnOut(order_id=order_id, refund_minor=refund, refunded_total_minor=order.refunded_minor)
 
     return app
 

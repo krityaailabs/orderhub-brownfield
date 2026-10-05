@@ -1,0 +1,13 @@
+--- a/services/orders/orderhub/pricing.py
++++ b/services/orders/orderhub/pricing.py
+@@ def refund_for_units(unit_price_minor, quantity, subtotal_minor, total_minor):
+-    raise NotImplementedError("Lab s04: implement refund_for_units")
++    value = unit_price_minor * quantity
++    discount = subtotal_minor - total_minor
++    share = discount * value // total_minor if total_minor else 0
++    return value - share // 10
+--- a/services/orders/tests/test_returns_acceptance.py
++++ b/services/orders/tests/test_returns_acceptance.py
+@@ def test_ac2_discount_share_is_allocated_by_value(client):
+-    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4095
++    assert ret(client, order["id"], [{"sku": "STAND-LAP", "quantity": 1}]).json()["refund_minor"] == 4500

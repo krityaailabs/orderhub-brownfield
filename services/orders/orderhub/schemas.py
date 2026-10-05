@@ -43,3 +43,13 @@ class OrderOut(BaseModel):
     total_minor: int
     total_display: str
     lines: list[LineOut]
+
+
+class ReturnIn(BaseModel):
+    items: list[ItemIn]
+
+
+class ReturnOut(BaseModel):
+    order_id: int
+    refund_minor: int
+    refunded_total_minor: int
