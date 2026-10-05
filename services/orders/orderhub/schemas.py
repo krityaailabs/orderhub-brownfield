@@ -1,5 +1,7 @@
 """Request and response models for the HTTP API."""
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -60,3 +62,16 @@ class ReturnOut(BaseModel):
     order_id: int
     refund_minor: int
     refunded_total_minor: int
+
+
+class LoyaltyEntryOut(BaseModel):
+    kind: str
+    order_id: int
+    points: int
+    created_at: datetime
+
+
+class PointsOut(BaseModel):
+    customer_id: int
+    balance: int
+    entries: list[LoyaltyEntryOut]

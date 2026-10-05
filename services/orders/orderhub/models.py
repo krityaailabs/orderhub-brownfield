@@ -6,7 +6,7 @@ Older code paths (see pricing.py) still do some arithmetic in floats.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Index, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -87,4 +87,23 @@ class IdempotencyRecord(Base):
     fingerprint: Mapped[str] = mapped_column(String(64))
     status_code: Mapped[int]
     response_json: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+
+class LoyaltyEntry(Base):
+    """One change to a customer's loyalty points (docs/specs/loyalty.md). Append-only: rows are
+    never updated or deleted; the balance is the sum of a customer's entries."""
+
+    __tablename__ = "loyalty_entries"
+    __table_args__ = (
+        # An order earns points once, whatever retries happen (AC-2).
+        Index("uq_loyalty_earn_once_per_order", "order_id", unique=True,
+              sqlite_where=text("kind = 'earn'"), postgresql_where=text("kind = 'earn'")),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), index=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    kind: Mapped[str] = mapped_column(String(16))  # "earn" or "clawback"
+    points: Mapped[int]
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

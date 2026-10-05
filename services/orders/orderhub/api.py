@@ -3,11 +3,22 @@
 from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.responses import JSONResponse
 
-from . import customers, idempotency, notify, orders, pricing
+from . import customers, idempotency, loyalty, notify, orders, pricing
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .errors import OrderHubError
-from .schemas import CustomerIn, CustomerOut, CustomerPatch, LineOut, OrderIn, OrderOut, ReturnIn, ReturnOut
+from .schemas import (
+    CustomerIn,
+    CustomerOut,
+    CustomerPatch,
+    LineOut,
+    LoyaltyEntryOut,
+    OrderIn,
+    OrderOut,
+    PointsOut,
+    ReturnIn,
+    ReturnOut,
+)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -54,6 +65,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def update_customer(customer_id: int, body: CustomerPatch, session=Depends(get_session)):
         c = customers.update_customer(session, customer_id, name=body.name)
         return CustomerOut(id=c.id, email=c.email, name=c.name, country=c.country)
+
+    @app.get("/customers/{customer_id}/points", response_model=PointsOut)
+    def customer_points(customer_id: int, session=Depends(get_session)):
+        customers.get_customer(session, customer_id)  # 404 for an unknown customer (loyalty AC-6)
+        ledger = [LoyaltyEntryOut(kind=e.kind, order_id=e.order_id, points=e.points, created_at=e.created_at)
+                  for e in loyalty.entries(session, customer_id)]
+        return PointsOut(customer_id=customer_id, balance=loyalty.balance(session, customer_id), entries=ledger)
 
     @app.post("/orders", status_code=201, response_model=OrderOut)
     def place_order(body: OrderIn, session=Depends(get_session)):

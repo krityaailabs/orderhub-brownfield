@@ -7,7 +7,7 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from . import pricing
+from . import loyalty, pricing
 from .errors import Conflict, NotFound, ValidationFailed
 from .models import Customer, DiscountCode, Order, OrderLine, Product
 
@@ -110,6 +110,7 @@ def ship_order(session: Session, order_id: int) -> Order:
     if order.status != "PLACED":
         raise Conflict(f"only PLACED orders can be shipped (order is {order.status})")
     order.status = "SHIPPED"
+    loyalty.credit_shipment(session, order)  # same transaction as the status change (loyalty AC-1)
     session.commit()
     return order
 
@@ -169,7 +170,9 @@ def return_items(session: Session, order_id: int, items: list[dict], now: dateti
         line = by_sku[sku]
         line.returned_quantity += qty
         line.product.stock += qty
+    refunded_before = order.refunded_minor
     order.refunded_minor += refund
+    loyalty.claw_back(session, order, refunded_before)  # same transaction (loyalty AC-4, AC-5)
     session.commit()
     return refund
 

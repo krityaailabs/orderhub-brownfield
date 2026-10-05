@@ -34,6 +34,7 @@ A change is done only when `make test`, `make lint` and, if it touches the billi
 - Domain errors are raised as `NotFound`, `Conflict` or `ValidationFailed` from `orderhub/errors.py`; the API maps them to status codes. Do not return error dicts from domain code.
 - No broad `except Exception:` in application code.
 - Stored datetimes without a time zone are UTC (SQLite returns them naive); compare in UTC.
+- Loyalty points (`orderhub/loyalty.py`, spec `docs/specs/loyalty.md`) are an append-only ledger: never update or delete `LoyaltyEntry` rows, and add earn/clawback entries in the same transaction as the ship or return. Points never touch the billing handoff; redemption is out of scope until finance agrees.
 - Pricing helpers are pure functions of their arguments; order-history rules (such as the refund remainder rule) live in `orders.py`.
 - Tests: pytest, one behaviour per test, names that read as sentences (`test_cancel_restores_stock`).
 - New dependencies need a reviewed reason. See `docs/adr/0002-no-new-dependencies-without-review.md`.
