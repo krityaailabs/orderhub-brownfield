@@ -31,6 +31,8 @@ A change is done only when `make test`, `make lint` and, if it touches the billi
   - Bad: `round(amount_minor * 0.9)`
 - Domain errors are raised as `NotFound`, `Conflict` or `ValidationFailed` from `orderhub/errors.py`; the API maps them to status codes. Do not return error dicts from domain code.
 - No broad `except Exception:` in application code.
+- Stored datetimes without a time zone are UTC (SQLite returns them naive); compare in UTC.
+- Pricing helpers are pure functions of their arguments; order-history rules (such as the refund remainder rule) live in `orders.py`.
 - Tests: pytest, one behaviour per test, names that read as sentences (`test_cancel_restores_stock`).
 - New dependencies need a reviewed reason. See `docs/adr/0002-no-new-dependencies-without-review.md`.
 

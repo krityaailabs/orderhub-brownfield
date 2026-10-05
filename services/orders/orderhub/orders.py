@@ -93,7 +93,12 @@ def cancel_order(session: Session, order_id: int) -> Order:
 def ship_order(session: Session, order_id: int) -> Order:
     """Mark a PLACED order as SHIPPED. Shipping a SHIPPED or CANCELLED order is a Conflict.
     Spec: docs/specs/returns.md, slice S1."""
-    raise NotImplementedError("Lab s04: implement ship_order")
+    order = get_order(session, order_id)
+    if order.status != "PLACED":
+        raise Conflict(f"only PLACED orders can be shipped (order is {order.status})")
+    order.status = "SHIPPED"
+    session.commit()
+    return order
 
 
 def _as_utc(moment: datetime) -> datetime:
@@ -115,7 +120,45 @@ def return_items(session: Session, order_id: int, items: list[dict], now: dateti
       AC-7: returned units go back into stock.
     Updates line.returned_quantity and order.refunded_minor, then commits.
     """
-    raise NotImplementedError("Lab s04: implement return_items")
+    order = get_order(session, order_id)
+    if order.status != "SHIPPED":
+        raise Conflict(f"only SHIPPED orders can be returned (order is {order.status})")
+    now = _as_utc(now or datetime.now(timezone.utc))
+    if now >= _as_utc(order.created_at) + RETURN_WINDOW:
+        raise ValidationFailed("return window closed")
+    if not items:
+        raise ValidationFailed("a return needs at least one item")
+
+    by_sku = {line.product.sku: line for line in order.lines}
+    requested: dict[str, int] = {}
+    for item in items:
+        sku = item["sku"].strip().upper()
+        qty = int(item["quantity"])
+        if sku not in by_sku:
+            raise ValidationFailed(f"{sku} is not on this order")
+        if qty < 1:
+            raise ValidationFailed("quantity must be at least 1")
+        requested[sku] = requested.get(sku, 0) + qty
+    for sku, qty in requested.items():
+        line = by_sku[sku]
+        if qty > line.quantity - line.returned_quantity:
+            raise ValidationFailed(f"cannot return {qty} x {sku}: only "
+                                   f"{line.quantity - line.returned_quantity} left to return")
+
+    remaining_after = sum(line.quantity - line.returned_quantity for line in order.lines) - sum(requested.values())
+    if remaining_after == 0:
+        refund = order.total_minor - order.refunded_minor
+    else:
+        refund = sum(pricing.refund_for_units(by_sku[sku].unit_price_minor, qty, order.subtotal_minor,
+                                              order.total_minor) for sku, qty in requested.items())
+
+    for sku, qty in requested.items():
+        line = by_sku[sku]
+        line.returned_quantity += qty
+        line.product.stock += qty
+    order.refunded_minor += refund
+    session.commit()
+    return refund
 
 
 def write_billing_handoff(session: Session, business_date: date, out_dir: str) -> Path:

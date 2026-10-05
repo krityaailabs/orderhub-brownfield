@@ -7,7 +7,7 @@ Usage: python tools/protect_tests.py [BASE]     (default BASE: origin/main, fall
 """
 
 import os
-import re  # noqa: F401  (used once the Lab s04 stub is implemented)
+import re
 import subprocess
 import sys
 
@@ -19,7 +19,18 @@ def find_test_edits(diff_text: str) -> list[tuple[str, str]]:
     """Given `git diff --unified=0` output, return (file, removed_line) for every line removed or
     changed in a test file that already existed. Lines removed from a new file (`--- /dev/null`)
     and pure additions don't count. Blank removed lines are ignored. Order is preserved."""
-    raise NotImplementedError("Lab s04: implement find_test_edits")
+    edits: list[tuple[str, str]] = []
+    current = None
+    for line in diff_text.splitlines():
+        if line.startswith("--- "):
+            current = None if line.strip() == "--- /dev/null" else re.sub(r"^--- (a/)?", "", line).strip()
+        elif line.startswith("+++ "):
+            continue
+        elif line.startswith("-") and current is not None:
+            removed = line[1:]
+            if removed.strip():
+                edits.append((current, removed))
+    return edits
 
 
 def _git(*args: str) -> str:

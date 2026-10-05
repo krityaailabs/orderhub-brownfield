@@ -1,7 +1,6 @@
 """Property-based tests for refunds (Lab 4.5). Hypothesis generates orders and return sequences;
 the properties must hold for all of them, not just the examples in the spec."""
 
-import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -32,17 +31,27 @@ def place_and_ship(session, lines, code):
 @settings(max_examples=60, deadline=None)
 @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
 def test_refunds_of_a_fully_returned_order_sum_to_its_total(lines, code, data):
-    # Lab 4.5: place and ship an order from the generated lines, return every unit one at a time
-    # in the drawn order, and assert the refunds sum to the order total.
-    pytest.fail("Lab 4.5: write this property-based test")
+    session = fresh_session()
+    order = place_and_ship(session, lines, code)
+    units = [sku for sku, qty in lines for _ in range(qty)]
+    order_of_returns = data.draw(st.permutations(units))
+    refunds = [orders.return_items(session, order.id, [{"sku": sku, "quantity": 1}]) for sku in order_of_returns]
+    assert sum(refunds) == order.total_minor
 
 
 @settings(max_examples=60, deadline=None)
 @given(lines=lines_strategy, code=st.sampled_from(CODES), data=st.data())
 def test_every_refund_is_non_negative_and_never_exceeds_what_is_left(lines, code, data):
-    # Lab 4.5: return a drawn number of units in a drawn order; assert each refund >= 0 and the
-    # running total never exceeds the order total.
-    pytest.fail("Lab 4.5: write this property-based test")
+    session = fresh_session()
+    order = place_and_ship(session, lines, code)
+    units = [sku for sku, qty in lines for _ in range(qty)]
+    count = data.draw(st.integers(1, len(units)))
+    refunded = 0
+    for sku in data.draw(st.permutations(units))[:count]:
+        refund = orders.return_items(session, order.id, [{"sku": sku, "quantity": 1}])
+        assert refund >= 0
+        refunded += refund
+        assert refunded <= order.total_minor
 
 
 @given(price=st.integers(1, 100_000), qty=st.integers(1, 20))

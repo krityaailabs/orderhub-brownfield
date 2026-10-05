@@ -48,4 +48,11 @@ def refund_for_units(unit_price_minor: int, quantity: int, subtotal_minor: int, 
     Spec: docs/specs/returns.md, AC-2. The final return of an order uses the remainder rule instead
     (see orders.return_items, AC-3).
     """
-    raise NotImplementedError("Lab s04: implement refund_for_units")
+    if quantity < 1:
+        raise ValueError("quantity must be at least 1")
+    if subtotal_minor <= 0 or not 0 <= total_minor <= subtotal_minor:
+        raise ValueError("subtotal must be positive and total between 0 and subtotal")
+    value = unit_price_minor * quantity
+    discount = subtotal_minor - total_minor
+    share = (2 * discount * value + subtotal_minor) // (2 * subtotal_minor)
+    return value - share
