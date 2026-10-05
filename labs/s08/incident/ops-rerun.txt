@@ -1,0 +1,6 @@
+05:02 Reran the batch for 2026-03-09 with BILLING_NEW_TAX_COUNTRIES unset (legacy path) into /tmp/rerun.
+05:03 Legacy output: trailer gross 0000048127330, sum of details 0000048127330. Finance accepts it.
+05:06 Compared the two outputs record by record: 410 identical, 2 differ, tax +1 minor unit on the new path:
+        order 88213  JP  net 0000001005  tax legacy 00000000100  new 00000000101
+        order 88347  AU  net 0000002405  tax legacy 00000000240  new 00000000241
+05:07 Sent the legacy output to finance. Switched BILLING_NEW_TAX_COUNTRIES off.

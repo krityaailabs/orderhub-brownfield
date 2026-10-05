@@ -1,0 +1,4 @@
+FINANCE-IMPORT 04:10:12 REJECTED BILL20260309.DAT
+  reason: control total mismatch
+  trailer gross total ............ 0000048127330
+  sum of detail gross amounts .... 0000048127332

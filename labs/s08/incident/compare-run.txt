@@ -1,0 +1,5 @@
+$ python tools/compare_tax.py --cases recorded_20.csv --countries JP,AU
+cases: 20 (orders 1001-1020, copied from last Monday's handoff)
+JP: 3 records, AU: 2 records
+old vs new: 0 differing records
+OK

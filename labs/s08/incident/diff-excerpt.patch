@@ -1,0 +1,20 @@
+--- a/services/orders/orderhub/billing_tax.py
++++ b/services/orders/orderhub/billing_tax.py
++def tax_minor(net_minor: int, country: str) -> int:
++    rate = RATES_BP.get(country, 0)
++    return int(net_minor * rate / 10000 + 0.5)  # standard rounding
+
+--- a/legacy/billing/src/com/orderhub/billing/FixedWidthExport.java
++++ b/legacy/billing/src/com/orderhub/billing/FixedWidthExport.java
+-    public static String detail(OrderRecord r) {
+-        long tax = InvoiceCalculator.tax(r.totalMinor, r.country);
++    public static String detail(OrderRecord r, TaxPolicy policy) {
++        long tax = policy.tax(r);
+         long gross = r.totalMinor + tax;
+@@ public static void write(List<OrderRecord> records, Date businessDate, String path, TaxPolicy policy)
+             for (OrderRecord r : records) {
+-                w.write(detail(r));
++                w.write(detail(r, policy));
+                 w.write("\r\n");
+                 sum += InvoiceCalculator.gross(r.totalMinor, r.country);
+             }

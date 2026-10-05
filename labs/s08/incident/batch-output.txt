@@ -1,0 +1,4 @@
+2026-03-10 02:00:01 NightlyBatch start handoff=/data/handoff out=/data/billing day=2026-03-09
+2026-03-10 02:00:01 tax: new path for 37 of 412 records (BILLING_NEW_TAX_COUNTRIES=JP,AU)
+2026-03-10 02:00:02 wrote 412 records to /data/billing/BILL20260309.DAT
+2026-03-10 02:00:02 exit 0
