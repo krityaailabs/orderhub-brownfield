@@ -1,0 +1,6 @@
+{
+  "min_severity": "info",
+  "drop_categories": [],
+  "dedupe": false,
+  "ignore_paths": []
+}

@@ -1,0 +1,695 @@
+{
+ "_note": "Synthetic automated-review output for Lab s09, triaged by hand: actionable = a person would change the code.",
+ "prs": [
+  {
+   "pr": "R01",
+   "comments": [
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/api.py",
+     "line": 10,
+     "text": "Query parameter is interpolated into SQL; use a bound parameter.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 10,
+     "text": "Lines are loaded lazily inside the loop (N+1); load them with selectinload.",
+     "actionable": true
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/api.py",
+     "line": 11,
+     "text": "Query parameter is interpolated into SQL; use a bound parameter.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R02",
+   "comments": [
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 11,
+     "text": "Refund is computed before the status check; a CANCELLED order can be refunded.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 11,
+     "text": "The test asserts status 200 but never checks the stock change it is named after.",
+     "actionable": true
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 21,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 21,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 21,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 21,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 21,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 12,
+     "text": "Refund is computed before the status check; a CANCELLED order can be refunded.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R03",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 12,
+     "text": "Points are credited before the order is committed; a failed commit leaves an orphan entry.",
+     "actionable": true
+    },
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/config.py",
+     "line": 12,
+     "text": "Token has a literal default; read it from the environment only.",
+     "actionable": true
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 22,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 22,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 22,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 22,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 22,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 13,
+     "text": "Points are credited before the order is committed; a failed commit leaves an orphan entry.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R04",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 13,
+     "text": "Lines are loaded lazily inside the loop (N+1); load them with selectinload.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 13,
+     "text": "Uses round() on a float; ADR 0001 requires integer minor units.",
+     "actionable": true
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 23,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 23,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 23,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 23,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 23,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 14,
+     "text": "Lines are loaded lazily inside the loop (N+1); load them with selectinload.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R05",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 14,
+     "text": "The test asserts status 200 but never checks the stock change it is named after.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 14,
+     "text": "Docstring says the function returns None; it returns the refund in minor units.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 24,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 24,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 24,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 24,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 24,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 15,
+     "text": "The test asserts status 200 but never checks the stock change it is named after.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R06",
+   "comments": [
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/config.py",
+     "line": 15,
+     "text": "Token has a literal default; read it from the environment only.",
+     "actionable": true
+    },
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 15,
+     "text": "A 409 outcome is stored, so a retried request can never succeed.",
+     "actionable": true
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/config.py",
+     "line": 25,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 25,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/config.py",
+     "line": 25,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/config.py",
+     "line": 25,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/config.py",
+     "line": 25,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/config.py",
+     "line": 16,
+     "text": "Token has a literal default; read it from the environment only.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R07",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 16,
+     "text": "Uses round() on a float; ADR 0001 requires integer minor units.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/api.py",
+     "line": 16,
+     "text": "limit=0 returns every order; validate 1 to 200.",
+     "actionable": true
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 26,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 26,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 26,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 26,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 26,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/pricing.py",
+     "line": 17,
+     "text": "Uses round() on a float; ADR 0001 requires integer minor units.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R08",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 17,
+     "text": "Docstring says the function returns None; it returns the refund in minor units.",
+     "actionable": true
+    },
+    {
+     "severity": "high",
+     "category": "security",
+     "file": "services/orders/orderhub/api.py",
+     "line": 17,
+     "text": "Query parameter is interpolated into SQL; use a bound parameter.",
+     "actionable": true
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 27,
+     "text": "Consider using double quotes consistently.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 27,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 27,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 27,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 27,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "docs",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 18,
+     "text": "Docstring says the function returns None; it returns the refund in minor units.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R09",
+   "comments": [
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 18,
+     "text": "A 409 outcome is stored, so a retried request can never succeed.",
+     "actionable": true
+    },
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/orders.py",
+     "line": 18,
+     "text": "Refund is computed before the status check; a CANCELLED order can be refunded.",
+     "actionable": true
+    },
+    {
+     "severity": "low",
+     "category": "naming",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 28,
+     "text": "Variable name `q` could be more descriptive.",
+     "actionable": false
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 28,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 28,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 28,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 28,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "high",
+     "category": "correctness",
+     "file": "services/orders/orderhub/idempotency.py",
+     "line": 19,
+     "text": "A 409 outcome is stored, so a retried request can never succeed.",
+     "actionable": false
+    }
+   ]
+  },
+  {
+   "pr": "R10",
+   "comments": [
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/api.py",
+     "line": 19,
+     "text": "limit=0 returns every order; validate 1 to 200.",
+     "actionable": true
+    },
+    {
+     "severity": "medium",
+     "category": "correctness",
+     "file": "services/orders/orderhub/loyalty.py",
+     "line": 19,
+     "text": "Points are credited before the order is committed; a failed commit leaves an orphan entry.",
+     "actionable": true
+    },
+    {
+     "severity": "info",
+     "category": "praise",
+     "file": "services/orders/orderhub/api.py",
+     "line": 29,
+     "text": "Nice use of a dataclass here.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "docs",
+     "file": "services/orders/orderhub/api.py",
+     "line": 29,
+     "text": "Consider adding a module docstring.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "style",
+     "file": "services/orders/orderhub/api.py",
+     "line": 29,
+     "text": "Line could be split for readability.",
+     "actionable": false
+    },
+    {
+     "severity": "nit",
+     "category": "style",
+     "file": "services/orders/orderhub/api.py",
+     "line": 29,
+     "text": "Trailing comma could be added.",
+     "actionable": false
+    },
+    {
+     "severity": "low",
+     "category": "test",
+     "file": "services/orders/tests/test_orders.py",
+     "line": 29,
+     "text": "Consider parametrising this test.",
+     "actionable": false
+    },
+    {
+     "severity": "medium",
+     "category": "performance",
+     "file": "services/orders/orderhub/api.py",
+     "line": 20,
+     "text": "limit=0 returns every order; validate 1 to 200.",
+     "actionable": false
+    }
+   ]
+  }
+ ]
+}

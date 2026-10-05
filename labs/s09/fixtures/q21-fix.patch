@@ -1,0 +1,31 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 759243d..4a28a65 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -72,8 +72,8 @@ def list_orders(session: Session, status: str | None = None, limit: int = 50) ->
+         .order_by(Order.id)
+         .limit(limit)
+     )
+-    if status:
+-        query = query.where(Order.status == status)
++    if status and status.strip():
++        query = query.where(Order.status == status.strip().upper())
+     result = []
+     for order in session.scalars(query):
+         result.append({
+diff --git a/services/orders/tests/test_orders.py b/services/orders/tests/test_orders.py
+index d3657cd..37f3607 100644
+--- a/services/orders/tests/test_orders.py
++++ b/services/orders/tests/test_orders.py
+@@ -115,3 +115,11 @@ def test_list_orders_query_count_does_not_grow_with_orders(client, count_queries
+         listed = client.get("/orders", params={"limit": 30}).json()
+     assert len(listed) == 30
+     assert len(statements) <= 4, f"{len(statements)} queries"
++
++
++def test_list_orders_status_filter_ignores_case_and_spaces(client):
++    order_id = place(client, [{"sku": "MUG-350", "quantity": 1}]).json()["id"]
++    client.post(f"/orders/{order_id}/ship")
++    ids = [[o["id"] for o in client.get("/orders", params={"status": s}).json()]
++           for s in ("SHIPPED", "shipped", " Shipped ")]
++    assert ids[0] == ids[1] == ids[2] and order_id in ids[0]

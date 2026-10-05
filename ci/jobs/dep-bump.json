@@ -1,0 +1,10 @@
+{
+  "allowed_paths": ["requirements.lock"],
+  "denied_paths": [".github/**", ".claude/**", "**/AGENTS.md", "tools/**", "services/**", "legacy/**", "ci/**"],
+  "budget": {"max_files": 1, "max_changed_lines": 2, "max_minutes": 5, "max_usd": 0.5},
+  "max_open_prs": 1,
+  "required_checks": [
+    {"name": "dependency-audit", "command": ["{python}", "tools/dep_audit.py"]}
+  ],
+  "_ci_note": "In CI, add a step before the checks that installs from the new requirements.lock, then run the full tests, the billing golden check and the security gate."
+}

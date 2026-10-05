@@ -1,0 +1,15 @@
+{
+  "issue_label": "agent-ok",
+  "agent_identity": "orderhub-agent",
+  "allowed_paths": ["services/orders/**", "docs/**"],
+  "denied_paths": [".github/**", ".claude/**", "**/AGENTS.md", "requirements.lock", "tools/agent_pipeline/**",
+                   "legacy/billing/test/golden/**", "instructor/**", "ci/**"],
+  "budget": {"max_files": 8, "max_changed_lines": 300, "max_minutes": 20, "max_usd": 3.0},
+  "max_runs_per_hour": 6,
+  "max_open_prs": 3,
+  "required_checks": [
+    {"name": "lint", "command": ["{python}", "-m", "ruff", "check", "services/orders", "tools"]},
+    {"name": "python-tests", "command": ["{python}", "-m", "pytest", "-q", "-p", "no:cacheprovider", "services/orders/tests"]},
+    {"name": "security", "command": ["{python}", "tools/security_gate.py"]}
+  ]
+}

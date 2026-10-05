@@ -1,0 +1,14 @@
+name: flaky-triage
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]          # every completed CI run, including runs on the agent's own PRs
+jobs:
+  triage:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Ask the agent to fix the failing test and open a PR
+        run: ./ci/agent-triage.sh "${{ github.event.workflow_run.id }}"
+        # no concurrency group, no timeout, no limit on open PRs, no check of who triggered the run

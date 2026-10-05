@@ -10,3 +10,4 @@ legacy/billing/build/
 
 # Personal Claude Code notes: do not use in this repository (it stops Claude Code reading AGENTS.md).
 CLAUDE.local.md
+.agent-pipeline/
