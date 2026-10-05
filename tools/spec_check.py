@@ -174,7 +174,8 @@ def main(argv: list[str] | None = None) -> int:
         pairs = [(Path(argv[0]), Path(argv[1]))]
     else:
         specs = sorted(p for p in (root / "docs" / "specs").glob("*.md")
-                       if not p.name.endswith(".plan.md") and p.name not in ("template.md", "README.md"))
+                       if not p.name.endswith((".plan.md", ".progress.md"))
+                       and p.name not in ("template.md", "README.md", "progress-template.md"))
         pairs = [(p, p.with_name(p.stem + ".plan.md")) for p in specs]
     if not pairs:
         print("No specs found in docs/specs.")

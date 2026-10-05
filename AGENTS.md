@@ -21,6 +21,7 @@ Run from the repository root. Use these exact commands; do not invent others.
 - Spec and plan check: `make spec-check`
 - Mutation tests for returns: `make mutate`
 - Test-tampering guard: `make protect-tests`
+- Checks for staged changes (also the pre-commit hook): `make precommit`
 
 A change is done only when `make test`, `make lint` and, if it touches the billing handoff, `make billing-demo` all pass.
 
@@ -39,6 +40,7 @@ A change is done only when `make test`, `make lint` and, if it touches the billi
 ## Boundaries
 
 - Never edit an existing test to make it pass. If a test looks wrong, stop and say so.
+- Never remove a business rule or a check to make an error go away. Ask.
 - Never change the CSV handoff columns or the billing export layout without an issue that says finance has agreed. Both are read by other programs.
 - Never commit secrets, `.env` files or real customer data. All data here is synthetic.
 - Do not modify `requirements.lock` except as the result of a reviewed dependency change.

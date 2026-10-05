@@ -1,9 +1,9 @@
 """HTTP API (FastAPI)."""
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
-from . import customers, orders, pricing
+from . import customers, idempotency, orders, pricing
 from .config import Settings, load_settings
 from .db import Base, make_engine, make_session_factory
 from .errors import OrderHubError
@@ -65,8 +65,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return orders.list_orders(session, status=status, limit=min(limit, 200))
 
     @app.post("/orders/{order_id}/cancel", response_model=OrderOut)
-    def cancel_order(order_id: int, session=Depends(get_session)):
-        return order_out(orders.cancel_order(session, order_id))
+    def cancel_order(order_id: int, session=Depends(get_session),
+                     idempotency_key: str | None = Header(default=None)):
+        if idempotency_key is None:
+            return order_out(orders.cancel_order(session, order_id))
+        fingerprint = idempotency.request_fingerprint("POST", f"/orders/{order_id}/cancel", None)
+        stored = idempotency.lookup(session, idempotency_key, fingerprint)
+        if stored is not None:
+            return JSONResponse(status_code=stored[0], content=stored[1])
+        body = order_out(orders.cancel_order(session, order_id)).model_dump()
+        idempotency.record(session, idempotency_key, fingerprint, 200, body)
+        return body
 
     @app.post("/orders/{order_id}/ship", response_model=OrderOut)
     def ship_order(order_id: int, session=Depends(get_session)):

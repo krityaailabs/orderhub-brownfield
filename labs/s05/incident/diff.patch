@@ -1,0 +1,9 @@
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ def cancel_order(session: Session, order_id: int) -> Order:
+     order = get_order(session, order_id)
+     if order.status == "CANCELLED":
+         return order
+-    if order.status == "SHIPPED":
+-        raise Conflict("shipped orders cannot be cancelled")
+     for line in order.lines:

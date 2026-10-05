@@ -76,3 +76,15 @@ class OrderLine(Base):
 
     order: Mapped[Order] = relationship(back_populates="lines")
     product: Mapped[Product] = relationship()
+
+
+class IdempotencyRecord(Base):
+    """Stored outcome of a request made with an Idempotency-Key header."""
+
+    __tablename__ = "idempotency_records"
+
+    key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    status_code: Mapped[int]
+    response_json: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

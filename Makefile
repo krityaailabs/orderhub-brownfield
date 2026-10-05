@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
 PY = .venv/Scripts/python
 endif
 
-.PHONY: help setup doctor test test-py test-tools test-java lint mutate protect-tests spec-check context-check billing-demo clean
+.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo clean
 
 help:
 	@echo "setup         create .venv and install pinned dependencies"
@@ -16,6 +16,8 @@ help:
 	@echo "test-tools    tests for the course tools"
 	@echo "test-java     legacy billing build and self-test only"
 	@echo "lint          ruff lint for the Python service"
+	@echo "install-hooks install the git pre-commit hook"
+	@echo "precommit     run the checks the staged files need"
 	@echo "mutate        mutation tests for the returns feature"
 	@echo "protect-tests fail if existing test lines changed without approval"
 	@echo "spec-check    check specs and slice plans in docs/specs"
@@ -43,6 +45,13 @@ test-java:
 
 lint:
 	$(PY) -m ruff check services/orders tools
+
+install-hooks:
+	cp tools/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+	@echo "pre-commit hook installed"
+
+precommit:
+	$(PY) tools/precommit.py
 
 mutate:
 	$(PY) tools/mutate.py
