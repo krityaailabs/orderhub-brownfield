@@ -1,0 +1,112 @@
+{
+ "currency": "illustrative cost units (not a real price; replace with your own currency and figures)",
+ "note": "Fill every value and its source (measured:, quote: or assumption:). The model refuses to run until you do.",
+ "shared": {
+  "loaded_cost_per_engineer_hour": {
+   "value": null,
+   "source": ""
+  },
+  "rework_hours_per_reworked_pr": {
+   "value": null,
+   "source": ""
+  }
+ },
+ "arms": {
+  "baseline": {
+   "licence_per_engineer_month": {
+    "value": null,
+    "source": ""
+   },
+   "agent_usage_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "merged_prs_per_engineer_month": {
+    "value": null,
+    "source": ""
+   },
+   "author_hours_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "review_hours_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "rework_rate": {
+    "value": null,
+    "source": ""
+   },
+   "enablement_hours_per_engineer_month": {
+    "value": null,
+    "source": ""
+   }
+  },
+  "agents": {
+   "licence_per_engineer_month": {
+    "value": null,
+    "source": ""
+   },
+   "agent_usage_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "merged_prs_per_engineer_month": {
+    "value": null,
+    "source": ""
+   },
+   "author_hours_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "review_hours_per_pr": {
+    "value": null,
+    "source": ""
+   },
+   "rework_rate": {
+    "value": null,
+    "source": ""
+   },
+   "enablement_hours_per_engineer_month": {
+    "value": null,
+    "source": ""
+   }
+  }
+ },
+ "scenarios": {
+  "small": {
+   "engineers": {
+    "value": null,
+    "source": ""
+   },
+   "agents": {
+    "enablement_hours_per_engineer_month": {
+     "value": null,
+     "source": ""
+    }
+   }
+  },
+  "medium": {
+   "engineers": {
+    "value": null,
+    "source": ""
+   }
+  },
+  "large": {
+   "engineers": {
+    "value": null,
+    "source": ""
+   },
+   "agents": {
+    "licence_per_engineer_month": {
+     "value": null,
+     "source": ""
+    },
+    "enablement_hours_per_engineer_month": {
+     "value": null,
+     "source": ""
+    }
+   }
+  }
+ }
+}

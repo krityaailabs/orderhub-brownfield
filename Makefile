@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
 PY = .venv/Scripts/python
 endif
 
-.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo billing-golden billing-compare review-flags security clean
+.PHONY: help setup doctor test test-py test-tools test-java lint install-hooks precommit mutate protect-tests spec-check context-check billing-demo billing-golden billing-compare review-flags security metrics cost-model clean
 
 help:
 	@echo "setup         create .venv and install pinned dependencies"
@@ -27,6 +27,8 @@ help:
 	@echo "billing-compare old vs new tax path, record by record"
 	@echo "security      CI security gate: secrets, agent permissions, static analysis, dependencies, canary"
 	@echo "review-flags  point a reviewer at the risky lines of a diff (BASE=ref or DIFF=file)"
+	@echo "metrics       delivery metrics from the lab's synthetic history (HISTORY=/tmp/orderhub-history)"
+	@echo "cost-model    cost per merged pull request from labs/s12/cost-scenarios.json"
 
 setup:
 	python3 -m venv .venv
@@ -83,6 +85,14 @@ billing-compare:
 
 security:
 	$(PY) tools/security_gate.py
+
+HISTORY ?= /tmp/orderhub-history
+metrics:
+	$(PY) labs/s12/build_history.py $(HISTORY)
+	$(PY) tools/metrics/delivery_metrics.py --repo $(HISTORY) --out labs/s12/metrics-report.md
+
+cost-model:
+	$(PY) tools/metrics/cost_model.py
 
 clean:
 	rm -rf out legacy/billing/build services/orders/.pytest_cache
