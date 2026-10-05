@@ -1,0 +1,6 @@
+{"_note": "Synthetic recording metadata for Lab s10 (illustrative tool 'B': a cheaper, faster agent setup).",
+ "T1": {"minutes": 2.0, "usd": 0.06, "turns": 5},
+ "T2": {"minutes": 3.0, "usd": 0.09, "turns": 7},
+ "T3": {"minutes": 3.5, "usd": 0.11, "turns": 8},
+ "T4": {"minutes": 1.0, "usd": 0.03, "turns": 3},
+ "T5": {"minutes": 2.0, "usd": 0.05, "turns": 5}}

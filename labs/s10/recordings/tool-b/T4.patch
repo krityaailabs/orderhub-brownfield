@@ -1,0 +1,13 @@
+diff --git a/legacy/billing/docs/RECORD_LAYOUT.txt b/legacy/billing/docs/RECORD_LAYOUT.txt
+index 70542b3..8789384 100644
+--- a/legacy/billing/docs/RECORD_LAYOUT.txt
++++ b/legacy/billing/docs/RECORD_LAYOUT.txt
+@@ -13,7 +13,7 @@ Detail (D)
+   pos 12-41  customer name, left aligned, space filled
+   pos 42-43  country
+   pos 44-46  currency
+-  pos 47-56  net amount, implied 2 decimals, zero filled
++  pos 47-57  net amount, implied 2 decimals, zero filled
+   pos 57-66  tax amount
+   pos 67-76  gross amount
+ 

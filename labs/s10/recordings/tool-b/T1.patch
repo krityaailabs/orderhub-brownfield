@@ -1,0 +1,13 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 759243d..7f098eb 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -73,7 +73,7 @@ def list_orders(session: Session, status: str | None = None, limit: int = 50) ->
+         .limit(limit)
+     )
+     if status:
+-        query = query.where(Order.status == status)
++        query = query.where(Order.status == status.strip().upper())
+     result = []
+     for order in session.scalars(query):
+         result.append({

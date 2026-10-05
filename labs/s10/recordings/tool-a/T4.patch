@@ -1,0 +1,26 @@
+diff --git a/legacy/billing/docs/RECORD_LAYOUT.txt b/legacy/billing/docs/RECORD_LAYOUT.txt
+index 70542b3..966c13e 100644
+--- a/legacy/billing/docs/RECORD_LAYOUT.txt
++++ b/legacy/billing/docs/RECORD_LAYOUT.txt
+@@ -1,6 +1,6 @@
+ BILLING EXPORT RECORD LAYOUT                                  rev 3, 2017
+ -----------------------------------------------------------------------
+-File: BILLyyyymmdd.DAT, fixed width, 80 bytes per record.
++File: BILLyyyymmdd.DAT, fixed width, 80 bytes per record (space-padded to 80).
+ 
+ Header (H)
+   pos 1      'H'
+@@ -13,9 +13,10 @@ Detail (D)
+   pos 12-41  customer name, left aligned, space filled
+   pos 42-43  country
+   pos 44-46  currency
+-  pos 47-56  net amount, implied 2 decimals, zero filled
+-  pos 57-66  tax amount
+-  pos 67-76  gross amount
++  pos 47-57  net amount, implied 2 decimals, zero filled (11)
++  pos 58-68  tax amount (11)
++  pos 69-79  gross amount (11)
++  pos 80     space
+ 
+ Trailer (T)
+   pos 1      'T'

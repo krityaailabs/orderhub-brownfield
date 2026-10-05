@@ -9,7 +9,8 @@
 Static analysis ignores two rules in this repository, both known false positives here:
 S603 (subprocess call: check for untrusted input) and S607 (partial executable path). Every
 subprocess call in tools/ uses a fixed argument list with git, java or the repository's Python.
-Tests are excluded (S101 flags every assert). Re-check these exclusions when the code changes.
+Tests are excluded, including the evaluation tasks' held-out tests (S101 flags every assert).
+Re-check these exclusions when the code changes.
 
 Usage: python tools/security_gate.py          (exit 1 if any check fails)
 """
@@ -23,7 +24,8 @@ PY = sys.executable
 CHECKS = {
     "secrets": [PY, "tools/secret_scan.py", "--all"],
     "permissions": [PY, "tools/permission_check.py"],
-    "static": [PY, "-m", "ruff", "check", "--select", "S", "--ignore", "S603,S607", "--exclude", "tools/tests",
+    "static": [PY, "-m", "ruff", "check", "--select", "S", "--ignore", "S603,S607",
+               "--exclude", "tools/tests,tools/eval_harness/tasks",
                "--output-format", "concise", "services/orders/orderhub", "tools"],
     "dependencies": [PY, "tools/dep_audit.py"],
     "canary": [PY, "tools/untrusted_text.py", "canary"],

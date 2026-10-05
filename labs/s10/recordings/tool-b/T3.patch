@@ -1,0 +1,17 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 759243d..e98fb2d 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -24,6 +24,12 @@ def place_order(session: Session, customer_id: int, items: list[dict], currency:
+     if customer is None:
+         raise NotFound(f"customer {customer_id} not found")
+ 
++    merged: dict[str, int] = {}
++    for item in items:
++        sku = item["sku"].strip().upper()
++        merged[sku] = merged.get(sku, 0) + int(item["quantity"])
++    items = [{"sku": sku, "quantity": qty} for sku, qty in merged.items()]
++
+     lines: list[OrderLine] = []
+     for item in items:
+         product = session.scalar(select(Product).where(Product.sku == item["sku"].strip().upper()))

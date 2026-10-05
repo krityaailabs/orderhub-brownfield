@@ -1,0 +1,11 @@
+tool,task,review_minutes,findings
+tool-a,T1,3,none
+tool-a,T2,6,none
+tool-a,T3,14,"renamed every variable in place_order (unasked); correct but slow to review"
+tool-a,T4,2,none
+tool-a,T5,5,"limit lives in the domain only; the schema comment explains why"
+tool-b,T1,2,"no test added"
+tool-b,T2,4,"customer_id not validated (0 returns all orders); no type hint on the new parameter"
+tool-b,T3,5,"merges before validating quantities: [-1, +2] of the same SKU becomes 1 and passes"
+tool-b,T4,2,"only the first amount corrected"
+tool-b,T5,2,"magic number 99; no test added"

@@ -1,0 +1,41 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 759243d..2d9de09 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -24,18 +24,27 @@ def place_order(session: Session, customer_id: int, items: list[dict], currency:
+     if customer is None:
+         raise NotFound(f"customer {customer_id} not found")
+ 
++    # Merge repeated SKUs (any case) into one requested quantity, keeping first-seen order.
++    requested_quantities: dict[str, int] = {}
++    original_names: dict[str, str] = {}
++    for requested_item in items:
++        normalised_sku = requested_item["sku"].strip().upper()
++        requested_quantity = int(requested_item["quantity"])
++        if requested_quantity < 1:
++            raise ValidationFailed("quantity must be at least 1")
++        requested_quantities[normalised_sku] = requested_quantities.get(normalised_sku, 0) + requested_quantity
++        original_names.setdefault(normalised_sku, requested_item["sku"])
++
+     lines: list[OrderLine] = []
+-    for item in items:
+-        product = session.scalar(select(Product).where(Product.sku == item["sku"].strip().upper()))
++    for normalised_sku, requested_quantity in requested_quantities.items():
++        product = session.scalar(select(Product).where(Product.sku == normalised_sku))
+         if product is None or not product.active:
+-            raise ValidationFailed(f"unknown product {item['sku']}")
+-        qty = int(item["quantity"])
+-        if qty < 1:
+-            raise ValidationFailed("quantity must be at least 1")
+-        if product.stock < qty:
++            raise ValidationFailed(f"unknown product {original_names[normalised_sku]}")
++        if product.stock < requested_quantity:
+             raise Conflict(f"not enough stock for {product.sku}")
+-        product.stock -= qty
+-        lines.append(OrderLine(product_id=product.id, quantity=qty, unit_price_minor=product.unit_price_minor))
++        product.stock -= requested_quantity
++        lines.append(OrderLine(product_id=product.id, quantity=requested_quantity,
++                               unit_price_minor=product.unit_price_minor))
+ 
+     sub = pricing.subtotal([(line.unit_price_minor, line.quantity) for line in lines])
+     total = sub

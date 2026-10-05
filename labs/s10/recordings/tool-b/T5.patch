@@ -1,0 +1,22 @@
+diff --git a/services/orders/orderhub/orders.py b/services/orders/orderhub/orders.py
+index 759243d..39f6deb 100644
+--- a/services/orders/orderhub/orders.py
++++ b/services/orders/orderhub/orders.py
+@@ -32,6 +32,8 @@ def place_order(session: Session, customer_id: int, items: list[dict], currency:
+         qty = int(item["quantity"])
+         if qty < 1:
+             raise ValidationFailed("quantity must be at least 1")
++        if qty > 99:
++            raise ValidationFailed("quantity must be at most 99")
+         if product.stock < qty:
+             raise Conflict(f"not enough stock for {product.sku}")
+         product.stock -= qty
+@@ -151,6 +153,8 @@ def return_items(session: Session, order_id: int, items: list[dict], now: dateti
+             raise ValidationFailed(f"{sku} is not on this order")
+         if qty < 1:
+             raise ValidationFailed("quantity must be at least 1")
++        if qty > 99:
++            raise ValidationFailed("quantity must be at most 99")
+         requested[sku] = requested.get(sku, 0) + qty
+     for sku, qty in requested.items():
+         line = by_sku[sku]
